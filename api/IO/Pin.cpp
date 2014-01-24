@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,23 +28,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#include <PICoo.h>
 
-#include <stdint.h>
+namespace IO {
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <Board_Defs.h>
-#ifdef __cplusplus
+    Pin::Pin(Parallel &dev, uint16_t pin, uint8_t mode, uint8_t data) : _dev(&dev), _pin(pin), _mode(mode) {
+        _dev->setMode(_pin, _mode, data);
+    }
+
+    void Pin::write(uint8_t level) {
+        if (_mode == IO::OUTPUT) {
+            _dev->write(_pin, level);
+        }
+    }
+
+    uint8_t Pin::read() {
+        if (_mode == IO::INPUT) {
+            return _dev->read(_pin);
+        }
+        return IO::LOW;
+    }
+
+    void Pin::setMode(uint8_t mode, uint8_t data) {
+        _mode = mode;
+        _dev->setMode(_pin, _mode);
+    }
+
 }
-#endif
-
-#include <System/System.h>
-
-#include <IO/IO.h>
-
-#endif

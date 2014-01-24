@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,23 +28,46 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _IO_PIC32_H
+#define _IO_PIC32_H
 
-#include <stdint.h>
+/*
+ * PIC32 Core digital IO device
+ */
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
+#include <PICoo.h>
+
+#ifndef OPT_BOARD_DATA
+#define OPT_BOARD_DATA
+#include <Board_Data.c>
 #endif
-    #include <Board_Defs.h>
-#ifdef __cplusplus
+
+namespace IO {
+    class PIC32 : public Parallel {
+        public:
+            void write(uint16_t pin, uint8_t level);
+            uint8_t read(uint16_t pin);
+            void setMode(uint16_t pin, uint8_t mode, uint8_t data = IO::OFF);
+
+        private:
+            uint32_t digitalPinToPort(uint16_t pin);
+            uint32_t digitalPinToBitMask(uint16_t pin);
+            p32_ioport *portRegisters(uint16_t port);
+
+            uint8_t isPpsPin(uint16_t pin);
+            volatile uint32_t *ppsOutputRegister(uint16_t pin);
+            uint32_t ppsInputSelect(uint16_t pin);
+            uint32_t ppsOutputSelect(uint32_t func);
+
+            enum {
+                NOT_A_PIN = 255
+            };
+
+            enum {
+                NOT_PPS_PIN = 255
+            };
+
+    };
 }
-#endif
-
-#include <System/System.h>
-
-#include <IO/IO.h>
 
 #endif

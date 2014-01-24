@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,23 +28,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _SYSTEM_SYSTEM_H
+#define _SYSTEM_SYSTEM_H
 
-#include <stdint.h>
-
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <Board_Defs.h>
-#ifdef __cplusplus
-}
+#ifndef NUM_DIGITAL_PINS_EXTENDED
+#define NUM_DIGITAL_PINS_EXTENDED NUM_DIGITAL_PINS
 #endif
 
-#include <System/System.h>
-
-#include <IO/IO.h>
+#if defined(__PIC32MX1XX__) || defined(__PIC32MX2XX__)
+/* The following are used to build tables used to map pin numbers for
+** PPS input and output selection.
+*/
+#define _RPOBASE    RPA0R       //base address of PPS output select registers
+#define _RPIBASE    INT1R       //base address of PPS input select registers
+#define _PPS_OUT(P) (P)
+#define _PPS_IN(P) (uint8_t)(((P) & 0x0F) | ((P) >> 4))
+#endif  // defined(__PIC32MX1XX__) || defined(__PIC32MX2XX__)
 
 #endif

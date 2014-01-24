@@ -28,23 +28,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _IO_PARALLEL_H
+#define _IO_PARALLEL_H
 
-#include <stdint.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <Board_Defs.h>
-#ifdef __cplusplus
+/*
+ * This is the base class for all parallel IO (i.e., digital IO pins) devices
+ * including the built-in IO pins of the PIC32 chip.
+ */
+
+namespace IO {
+
+    enum { OUTPUT, INPUT };
+    enum { LOW, HIGH };
+    enum { OFF, PULLUP, PULLDOWN };
+            
+    class Parallel {
+        public:
+            virtual void write(uint16_t pin, uint8_t state) = 0;
+            virtual uint8_t read(uint16_t pin) = 0;
+            virtual void setMode(uint16_t pin, uint8_t mode, uint8_t data = IO::OFF) = 0;
+    };
 }
-#endif
-
-#include <System/System.h>
-
-#include <IO/IO.h>
 
 #endif

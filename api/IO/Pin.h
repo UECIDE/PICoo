@@ -28,23 +28,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _IO_PIN_H
+#define _IO_PIN_H
 
-#include <stdint.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <Board_Defs.h>
-#ifdef __cplusplus
+/*
+ * This is a pin-level abstraction for manipulating a single IO pin
+ */
+
+namespace IO {
+    class Pin {
+        public:
+            Pin(Parallel &dev, uint16_t pin, uint8_t mode = IO::INPUT, uint8_t data = IO::OFF);
+            uint8_t read();
+            void write(uint8_t level);
+            void setMode(uint8_t mode, uint8_t data = IO::OFF);
+
+        private:
+            Parallel *_dev;
+            uint16_t _pin;
+            uint8_t _mode;
+    };
 }
-#endif
-
-#include <System/System.h>
-
-#include <IO/IO.h>
 
 #endif
