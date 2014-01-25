@@ -11,4 +11,8 @@
 # define THREAD_MS 1
 #endif
 
+#ifndef STACK_SIZE
+# define STACK_SIZE 8192
+#endif
+
 #endif

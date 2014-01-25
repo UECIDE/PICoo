@@ -164,11 +164,38 @@ namespace IO {
                 iop->tris.set = bit;    //make the pin an input
                 break;
 
+            case IO::OUTPUT:
+                iop->tris.clr = bit;
+                if (data) {
+                    iop->lat.set = bit;
+                } else {
+                    iop->lat.clr = bit;
+                }
+                break;
         }
 
     }
 
     void PIC32::write(uint16_t pin, uint8_t level) {
+        uint32_t                bit;
+        uint8_t                 port;
+        volatile p32_ioport *   iop;
+
+        if (pin >= NUM_DIGITAL_PINS_EXTENDED) {
+            return;
+        }
+
+        if ((port = digitalPinToPort(pin)) == NOT_A_PIN) {
+            return;
+        }
+
+        bit = digitalPinToBitMask(pin);
+        iop = (p32_ioport *)portRegisters(port);
+        if (level) {
+            iop->lat.set = bit;
+        } else {
+            iop->lat.clr = bit;
+        }
     }
 
     uint8_t PIC32::read(uint16_t pin) {

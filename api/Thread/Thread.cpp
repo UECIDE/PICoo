@@ -1,15 +1,70 @@
 #include <PICoo.h>
 #include <stdlib.h>
 
+//IO::PIC32 Core;
+//IO::Pin LED(Core, 13, IO::OUTPUT, IO::LOW);
+extern IO::Pin LED;
+
+extern uint32_t _gp;
+
 struct TCB *ThreadList = NULL;
 
 uint8_t __attribute__((aligned(4))) StackData[STACK_SIZE];
 
-struct TCB *currentThread = NULL;
+volatile struct TCB *currentThread = NULL;
 
 volatile uint32_t _MillisecondCounter = 0;
 
-uint32_t Thread::Create(void (*entry)(), uint32_t stacksize) {
+void taskIsFinished() {
+    currentThread->state = Thread::ZOMBIE;
+    while(1);
+}
+
+uint32_t _temp_sp;
+
+uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
+    uint32_t *stk = (uint32_t *)sp;
+    *stk-- = 0;
+    *stk-- = 0;
+    *stk-- = 0;
+    *stk-- = 0;
+    *stk-- = (uint32_t)func;
+    *stk-- = 1;
+    *stk-- = (uint32_t)&taskIsFinished;
+    *stk-- = 0x30303030UL;
+    *stk-- = (uint32_t)_gp;
+    *stk-- = 0x25252525UL;
+    *stk-- = 0x24242424UL;
+    *stk-- = 0x23232323UL;
+    *stk-- = 0x22222222UL;
+    *stk-- = 0x21212121UL;
+    *stk-- = 0x20202020UL;
+    *stk-- = 0x19191919UL;
+    *stk-- = 0x18181818UL;
+    *stk-- = 0x17171717UL;
+    *stk-- = 0x16161616UL;
+    *stk-- = 0x15151515UL;
+    *stk-- = 0x14141414UL;
+    *stk-- = 0x13131313UL;
+    *stk-- = 0x12121212UL;
+    *stk-- = 0x11111111UL;
+    *stk-- = 0x10101010UL;
+    *stk-- = 0x09090909UL;
+    *stk-- = 0x08080808UL;
+    *stk-- = 0x07070707UL;
+    *stk-- = 0x06060606UL;
+    *stk-- = 0x05050505UL;
+    *stk-- = (uint32_t)param;
+    *stk-- = 0x03030303UL;
+    *stk-- = 0x02020202UL;
+    *stk-- = 0x01010101UL;
+    *stk-- = 0x33333333UL;
+    *stk = 0x32323232UL;
+
+    return (uint32_t)stk;
+}
+
+uint32_t Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) {
     
     if (ThreadList == NULL) { // This is our first ever thread
         struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
@@ -17,41 +72,7 @@ uint32_t Thread::Create(void (*entry)(), uint32_t stacksize) {
         newTCB->sp = newTCB->stack_head;
         newTCB->stack_size = stacksize;
 
-        newTCB->context.ra = (uint32_t)entry;
-        newTCB->context.r1 = 0;     // $at
-        newTCB->context.r2 = 0;     // $v0
-        newTCB->context.r3 = 0;     // $v1
-        newTCB->context.r4 = 0;     // $a0  < If we ever support thread
-        newTCB->context.r5 = 0;     // $a1  < args then they will go in
-        newTCB->context.r6 = 0;     // $a2  < these 4 registers $a0-$a4
-        newTCB->context.r7 = 0;     // $a3  <--------------------------
-        newTCB->context.r8 = 0;     // $t0
-        newTCB->context.r9 = 0;     // $t1
-        newTCB->context.r10 = 0;    // $t2
-        newTCB->context.r11 = 0;    // $t3
-        newTCB->context.r12 = 0;    // $t4
-        newTCB->context.r13 = 0;    // $t5
-        newTCB->context.r14 = 0;    // $t6
-        newTCB->context.r15 = 0;    // $t7
-        newTCB->context.r16 = 0;    // $s0
-        newTCB->context.r17 = 0;    // $s1
-        newTCB->context.r18 = 0;    // $s2
-        newTCB->context.r19 = 0;    // $s3  
-        newTCB->context.r20 = 0;    // $s4
-        newTCB->context.r21 = 0;    // $s5
-        newTCB->context.r22 = 0;    // $s6
-        newTCB->context.r23 = 0;    // $s7
-        newTCB->context.r24 = 0;    // $t8
-        newTCB->context.r25 = 0;    // $t9
-        newTCB->context.r26 = 0;    // $k0
-        newTCB->context.r27 = 0;    // $k1
-        newTCB->context.r28 = 0;    // $gp
-        newTCB->context.r29 = newTCB->sp;    // $sp
-        newTCB->context.r30 = 0;    // $s8
-        newTCB->context.r31 = (uint32_t)entry;    // $ra
-        newTCB->context.hi = 0;     // MUL High
-        newTCB->context.lo = 0;     // MUL Low
-        newTCB->context.c0status = 0;
+        newTCB->sp = FillStack(entry, newTCB->sp, param);
 
         newTCB->state_data = 0;
         newTCB->state = RUN;
@@ -59,6 +80,63 @@ uint32_t Thread::Create(void (*entry)(), uint32_t stacksize) {
         ThreadList = newTCB;
         return (uint32_t)newTCB;
     }
+
+    // It wasn't the first thread, so let's look for a suitable
+    // zombie thread to hijack.  We scan the threads, and if we
+    // find one that has the right size stack, we use it immediately.
+    // If not, we take the thread with the smallest stack that
+    // is bigger than the one we want.
+    // A proper space allocation system would be better, which
+    // keeps track of stack holes and reuses them for other threads
+    // but for now "this will do".
+
+    struct TCB *foundThread = 0;
+    struct TCB *lastThread = 0;
+    struct TCB *smallestThread = 0;
+    for (struct TCB *scan = ThreadList; scan != NULL; scan = scan->next) {
+        if (scan->state == ZOMBIE) {
+            if (scan->stack_size == stacksize) {
+                foundThread = scan;
+                break;
+            }
+            if (scan->stack_size > stacksize) {
+                if (smallestThread == 0) {
+                    smallestThread = scan;
+                } else if (scan->stack_size < smallestThread->stack_size) {
+                    smallestThread = scan;
+                }
+            }
+        }
+        if (!scan->next) {
+            lastThread = scan;
+        }
+    }
+
+    if (foundThread == 0) {
+        foundThread = smallestThread;
+    }
+
+    if (foundThread == 0) {
+        struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
+        newTCB->stack_head = (uint32_t)&StackData[STACK_SIZE-1];
+        newTCB->sp = newTCB->stack_head;
+        newTCB->stack_size = stacksize;
+
+        newTCB->sp = FillStack(entry, newTCB->sp, param);
+
+        newTCB->state_data = 0;
+        newTCB->state = RUN;
+        newTCB->next = NULL;
+        lastThread->next = newTCB;
+        return (uint32_t)newTCB;
+    } else {
+        foundThread->sp = foundThread->stack_head;
+        foundThread->sp = FillStack(entry, foundThread->sp, param);
+        foundThread->state_data = 0;
+        foundThread->state = RUN;
+        return (uint32_t)foundThread;
+    }
+    return 0;
 }
 
 void Thread::Sleep(uint32_t ms) {
@@ -81,6 +159,144 @@ void Thread::Hibernate() {
     }
 }
 
+void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
+    asm volatile("mfc0 $k1, $14");
+    asm volatile("addiu $sp, $sp, -128");
+    asm volatile("sw $k1, 124($sp)");
+    asm volatile("mfc0 $k1, $12");
+    asm volatile("mfc0 $k0, $13");
+    
+    asm volatile("sw $k1, 120($sp)");
+
+    asm volatile("ins $k1, $zero, 1, 15");
+    asm volatile("ext $k0, $k0, 10, 6");
+    asm volatile("ins $k1, $k0, 10, 6");
+    asm volatile("mtc0 $k1, $12");
+    
+    asm volatile("sw $31, 116($sp)");
+    asm volatile("sw $30, 112($sp)");
+    asm volatile("sw $28, 108($sp)");
+    asm volatile("sw $25, 104($sp)");
+    asm volatile("sw $24, 100($sp)");
+    asm volatile("sw $23,  96($sp)");
+    asm volatile("sw $22,  92($sp)");
+    asm volatile("sw $21,  88($sp)");
+    asm volatile("sw $20,  84($sp)");
+    asm volatile("sw $19,  80($sp)");
+    asm volatile("sw $18,  76($sp)");
+    asm volatile("sw $17,  72($sp)");
+    asm volatile("sw $16,  68($sp)");
+    asm volatile("sw $15,  64($sp)");
+    asm volatile("sw $14,  60($sp)");
+    asm volatile("sw $13,  56($sp)");
+    asm volatile("sw $12,  52($sp)");
+    asm volatile("sw $11,  48($sp)");
+    asm volatile("sw $10,  44($sp)");
+    asm volatile("sw  $9,  40($sp)");
+    asm volatile("sw  $8,  36($sp)");
+    asm volatile("sw  $7,  32($sp)");
+    asm volatile("sw  $6,  28($sp)");
+    asm volatile("sw  $5,  24($sp)");
+    asm volatile("sw  $4,  20($sp)");
+    asm volatile("sw  $3,  16($sp)");
+    asm volatile("sw  $2,  12($sp)");
+    asm volatile("sw  $1,   8($sp)");
+    asm volatile("mfhi $t0");
+    asm volatile("mflo $t1");
+    asm volatile("sw $t0, 4($sp)");
+    asm volatile("sw $t1, 0($sp)");
+
+
+    asm volatile("la $t0, _temp_sp");
+    asm volatile("sw $sp, 0($t0)");
+
+    currentThread->sp = _temp_sp;
+
+    _MillisecondCounter++;
+
+    do {
+        currentThread = currentThread->next;
+        if (currentThread == NULL) {
+            currentThread = ThreadList;
+        }
+
+        if (currentThread->state != Thread::RUN) {
+            if (currentThread->state == Thread::SLEEP) {
+                if (_MillisecondCounter == currentThread->state_data) {
+                    currentThread->state == Thread::RUN;
+                }
+            } else if (currentThread->state == Thread::MUTEX) {
+                volatile uint32_t *mutex = (uint32_t *)(currentThread->state_data);
+                if (*mutex == 0) {
+                    *mutex = 1;
+                    currentThread->state = Thread::RUN;
+                }
+            }
+        }
+    } while(currentThread->state != Thread::RUN);
+
+    static int j = 0;
+    static int i = 0;
+    j++;
+    if (j == 100) {
+        j = 0;
+        i = 1 - i;
+        LED.write(i);
+    }
+    currentThread->runtime++;
+
+    IFS0CLR = _IFS0_CTIF_MASK;
+
+    _temp_sp = currentThread->sp;
+    
+    asm volatile("la $t0, _temp_sp");
+    asm volatile("lw $sp, 0($t0)");
+
+    asm volatile("mfc0 $k0, $13");
+    asm volatile("ins $k0, $zero, 8, 1");
+    asm volatile("mtc0 $k0, $13");
+    
+    asm volatile("lw $t0, 0($sp)");
+    asm volatile("lw $t1, 4($sp)");
+    asm volatile("mtlo $t0");
+    asm volatile("mthi $t1");
+
+    asm volatile("lw  $1,   8($sp)");
+    asm volatile("lw  $2,  12($sp)");
+    asm volatile("lw  $3,  16($sp)");
+    asm volatile("lw  $4,  20($sp)");
+    asm volatile("lw  $5,  24($sp)");
+    asm volatile("lw  $6,  28($sp)");
+    asm volatile("lw  $7,  32($sp)");
+    asm volatile("lw  $8,  36($sp)");
+    asm volatile("lw  $9,  40($sp)");
+    asm volatile("lw $10,  44($sp)");
+    asm volatile("lw $11,  48($sp)");
+    asm volatile("lw $12,  52($sp)");
+    asm volatile("lw $13,  56($sp)");
+    asm volatile("lw $14,  60($sp)");
+    asm volatile("lw $15,  64($sp)");
+    asm volatile("lw $16,  68($sp)");
+    asm volatile("lw $17,  72($sp)");
+    asm volatile("lw $18,  76($sp)");
+    asm volatile("lw $19,  80($sp)");
+    asm volatile("lw $20,  84($sp)");
+    asm volatile("lw $21,  88($sp)");
+    asm volatile("lw $22,  92($sp)");
+    asm volatile("lw $23,  96($sp)");
+    asm volatile("lw $24, 100($sp)");
+    asm volatile("lw $25, 104($sp)");
+    asm volatile("lw $28, 108($sp)");
+    asm volatile("lw $30, 112($sp)");
+    asm volatile("lw $31, 116($sp)");
+
+    asm volatile("lw $k1, 124($sp)");
+    asm volatile("lw $k0, 120($sp)");
+    asm volatile("mtc0 $k1, $14");
+    asm volatile("addiu $sp, $sp, 128");
+    asm volatile("mtc0 $k0, $12");
+}
+
 // This is going to be a fun one to write.  We need to jump into the
 // first thread in the list that is capable of running.  In theory
 // the function should never return, as control is wrestled away
@@ -97,7 +313,7 @@ void __attribute__((nomips16)) Thread::Start() {
     asm volatile("mtc0  %0,$11" : "+r"(val)); // Set up the tick
 
     Interrupt::SetPriority(_CORE_TIMER_VECTOR, _CT_IPL_IPC, _CT_SPL_IPC);
-    Interrupt::SetVector(_CORE_TIMER_VECTOR, Scheduler);
+    Interrupt::SetVector(_CORE_TIMER_VECTOR, ThreadScheduler);
     Interrupt::EnableIRQ(_CORE_TIMER_IRQ);
 }
 
@@ -112,121 +328,5 @@ uint32_t Thread::Runtime() {
 uint32_t Thread::Runtime(uint32_t thread) {
     struct TCB *t = (struct TCB *)thread;
     return t->runtime;
-}
-
-void __attribute__((interrupt(),nomips16)) Thread::Scheduler() {
-    asm volatile("la $k1, currentThread");
-    asm volatile("lw $k0, 0($k1)");
-    asm volatile("sw $sp, 0($k0)");
-    asm volatile("mfc0 $k1, $14");
-    asm volatile("sw $k1, 24($k0)");
-    asm volatile("mfc0 $k1, $12");
-    asm volatile("sw $k1, 28($k0)");
-    asm volatile("sw $31, 32($k0)");
-    asm volatile("sw $30, 36($k0)");
-    asm volatile("sw $29, 40($k0)");
-    asm volatile("sw $28, 44($k0)");
-    asm volatile("sw $27, 48($k0)");
-    asm volatile("sw $26, 52($k0)");
-    asm volatile("sw $25, 56($k0)");
-    asm volatile("sw $24, 60($k0)");
-    asm volatile("sw $23, 64($k0)");
-    asm volatile("sw $22, 68($k0)");
-    asm volatile("sw $21, 72($k0)");
-    asm volatile("sw $20, 76($k0)");
-    asm volatile("sw $19, 80($k0)");
-    asm volatile("sw $18, 84($k0)");
-    asm volatile("sw $17, 88($k0)");
-    asm volatile("sw $16, 92($k0)");
-    asm volatile("sw $15, 96($k0)");
-    asm volatile("sw $14, 100($k0)");
-    asm volatile("sw $13, 104($k0)");
-    asm volatile("sw $12, 108($k0)");
-    asm volatile("sw $11, 112($k0)");
-    asm volatile("sw $10, 116($k0)");
-    asm volatile("sw $9, 120($k0)");
-    asm volatile("sw $8, 124($k0)");
-    asm volatile("sw $7, 128($k0)");
-    asm volatile("sw $6, 132($k0)");
-    asm volatile("sw $5, 136($k0)");
-    asm volatile("sw $4, 140($k0)");
-    asm volatile("sw $3, 144($k0)");
-    asm volatile("sw $2, 148($k0)");
-    asm volatile("sw $1, 152($k0)");
-    asm volatile("mfhi $t0");
-    asm volatile("mflo $t1");
-    asm volatile("sw $t0, 156($k0)");
-    asm volatile("sw $t1, 160($k0)");
-     
-    _MillisecondCounter++;
-
-    do {
-        currentThread = currentThread->next;
-        if (currentThread == NULL) {
-            currentThread = ThreadList;
-        }
-
-        if (currentThread->state != RUN) {
-            if (currentThread->state == SLEEP) {
-                if (_MillisecondCounter == currentThread->state_data) {
-                    currentThread->state == RUN;
-                }
-            } else if (currentThread->state == MUTEX) {
-                volatile uint32_t *mutex = (uint32_t *)(currentThread->state_data);
-                if (*mutex == 0) {
-                    *mutex = 1;
-                    currentThread->state = RUN;
-                }
-            }
-        }
-    } while(currentThread->state != RUN);
-
-    currentThread->runtime++;
-
-    asm volatile("la $k1, currentThread");
-    asm volatile("lw $k0, 0($k1)");
-
-    asm volatile("lw $t1, 160($k0)");
-    asm volatile("lw $t0, 156($k0)");
-    asm volatile("mtlo $t1");
-    asm volatile("mthi $t0");
-    asm volatile("lw $1, 152($k0)");
-    asm volatile("lw $2, 148($k0)");
-    asm volatile("lw $3, 144($k0)");
-    asm volatile("lw $4, 140($k0)");
-    asm volatile("lw $5, 136($k0)");
-    asm volatile("lw $6, 132($k0)");
-    asm volatile("lw $7, 128($k0)");
-    asm volatile("lw $8, 124($k0)");
-    asm volatile("lw $9, 120($k0)");
-    asm volatile("lw $10, 116($k0)");
-    asm volatile("lw $11, 112($k0)");
-    asm volatile("lw $12, 108($k0)");
-    asm volatile("lw $13, 104($k0)");
-    asm volatile("lw $14, 100($k0)");
-    asm volatile("lw $15, 96($k0)");
-    asm volatile("lw $16, 92($k0)");
-    asm volatile("lw $17, 88($k0)");
-    asm volatile("lw $18, 84($k0)");
-    asm volatile("lw $19, 80($k0)");
-    asm volatile("lw $20, 76($k0)");
-    asm volatile("lw $21, 72($k0)");
-    asm volatile("lw $22, 68($k0)");
-    asm volatile("lw $23, 64($k0)");
-    asm volatile("lw $24, 60($k0)");
-    asm volatile("lw $25, 56($k0)");
-    asm volatile("lw $26, 52($k0)");
-    asm volatile("lw $27, 48($k0)");
-    asm volatile("lw $28, 44($k0)");
-    asm volatile("lw $29, 40($k0)");
-    asm volatile("lw $30, 36($k0)");
-    asm volatile("lw $31, 32($k0)");
-
-    asm volatile("lw $k1, 28($k0)");
-    asm volatile("mtc0 $k1, $12");
-    asm volatile("lw $k1, 24($k0)");
-    asm volatile("mtc0 $k1, $14");
-
-    asm volatile("lw $sp, 0($k0)");
 }
 

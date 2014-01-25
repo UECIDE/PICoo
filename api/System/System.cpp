@@ -27,7 +27,7 @@ namespace System {
             wait += 1;
             clk -= FLASH_SPEED_HZ;
         }
-        stCache &= ~CHECON_PFMWS_MASK;
+        stCache &= ~_CHECON_PFMWS_MASK;
         stCache |= (wait << _CHECON_PFMWS_POSITION);
         CHECON = stCache;
 #endif
