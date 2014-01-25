@@ -31,6 +31,8 @@
 #ifndef _SYSTEM_SYSTEM_H
 #define _SYSTEM_SYSTEM_H
 
+#include <System/System_Defs.h>
+
 #ifndef NUM_DIGITAL_PINS_EXTENDED
 #define NUM_DIGITAL_PINS_EXTENDED NUM_DIGITAL_PINS
 #endif
@@ -44,5 +46,9 @@
 #define _PPS_OUT(P) (P)
 #define _PPS_IN(P) (uint8_t)(((P) & 0x0F) | ((P) >> 4))
 #endif  // defined(__PIC32MX1XX__) || defined(__PIC32MX2XX__)
+
+namespace System {
+    extern void __attribute__((nomips16)) Configure(uint32_t);
+}
 
 #endif

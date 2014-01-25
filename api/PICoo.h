@@ -38,12 +38,17 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    #include <Board_Defs.h>
+    #include <compat/pins_arduino.h>
 #ifdef __cplusplus
 }
 #endif
 
+#include <Tuning.h>
+
+#include <System/Interrupt.h>
 #include <System/System.h>
+#include <System/JTAG.h>
+#include <Thread/Thread.h>
 
 #include <IO/IO.h>
 

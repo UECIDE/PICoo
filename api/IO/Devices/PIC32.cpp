@@ -30,6 +30,11 @@
 
 #include <PICoo.h>
 
+#ifndef OPT_BOARD_DATA
+#define OPT_BOARD_DATA
+#include <Board_Data.c>
+#endif
+
 
 namespace IO {
 
@@ -169,39 +174,4 @@ namespace IO {
     uint8_t PIC32::read(uint16_t pin) {
         return IO::LOW;
     }
-
-
-    uint32_t PIC32::digitalPinToPort(uint16_t pin) {
-        return digital_pin_to_port_PGM[pin];
-    }
-
-    uint32_t PIC32::digitalPinToBitMask(uint16_t pin) {
-        return digital_pin_to_bit_mask_PGM[pin];
-    }
-
-    p32_ioport *PIC32::portRegisters(uint16_t port) {
-        return (p32_ioport *)(port_to_tris_PGM[port] - 0x0010);
-    }
-
-    uint8_t PIC32::isPpsPin(uint16_t pin) {
-        return ((digital_pin_to_pps_out_PGM[pin] == NOT_PPS_PIN) ? 0 : 1);
-    }
-
-    volatile uint32_t *PIC32::ppsOutputRegister(uint16_t pin) {
-#ifdef _RPOBASE
-        return (volatile uint32_t *)((uint32_t)(&_RPOBASE) + 4*digital_pin_to_pps_out_PGM[pin]);
-#else
-        return 0;
-#endif
-    }
-
-    uint32_t PIC32::ppsInputSelect(uint16_t pin) {
-        return (digital_pin_to_pps_in_PGM[pin] & 0x000F);
-    }
-
-    uint32_t PIC32::ppsOutputSelect(uint32_t func) {
-        return ((func) & PPS_OUT_MASK);
-    }
-
-
 }

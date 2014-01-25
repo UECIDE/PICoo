@@ -37,10 +37,6 @@
 
 #include <PICoo.h>
 
-#ifndef OPT_BOARD_DATA
-#define OPT_BOARD_DATA
-#include <Board_Data.c>
-#endif
 
 namespace IO {
     class PIC32 : public Parallel {
@@ -48,25 +44,6 @@ namespace IO {
             void write(uint16_t pin, uint8_t level);
             uint8_t read(uint16_t pin);
             void setMode(uint16_t pin, uint8_t mode, uint8_t data = IO::OFF);
-
-        private:
-            uint32_t digitalPinToPort(uint16_t pin);
-            uint32_t digitalPinToBitMask(uint16_t pin);
-            p32_ioport *portRegisters(uint16_t port);
-
-            uint8_t isPpsPin(uint16_t pin);
-            volatile uint32_t *ppsOutputRegister(uint16_t pin);
-            uint32_t ppsInputSelect(uint16_t pin);
-            uint32_t ppsOutputSelect(uint32_t func);
-
-            enum {
-                NOT_A_PIN = 255
-            };
-
-            enum {
-                NOT_PPS_PIN = 255
-            };
-
     };
 }
 
