@@ -11,10 +11,10 @@ typedef struct TCB * thread;
 
 
 struct TCB {
-    uint32_t sp;            // Stored stack pointer
+    uint32_t *sp;            // Stored stack pointer
     uint32_t state;         // Current thread state
     uint32_t state_data;    // Data associated with state (wake time, mutex address, etc)
-    uint32_t stack_head;    // Location in RAM of the top of the stack
+    uint32_t *stack_head;    // Location in RAM of the top of the stack
     uint32_t stack_size;    // Amount of memory allocated to the stack
     uint32_t runtime;
     struct TCB *next;       // Next TCB in list
@@ -39,7 +39,7 @@ class Thread {
         static uint32_t Runtime();
         static uint32_t Runtime(uint32_t thread);
 
-        static uint32_t FillStack(threadFunction func, uint32_t sp, uint32_t param);
+        static uint32_t *FillStack(threadFunction func, uint32_t *sp, uint32_t param);
 
 };
 

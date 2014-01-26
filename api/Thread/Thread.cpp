@@ -6,7 +6,7 @@ extern uint32_t _gp;
 
 struct TCB *ThreadList = NULL;
 
-uint8_t __attribute__((aligned(4))) StackData[STACK_SIZE];
+uint32_t __attribute__((aligned(4))) StackData[STACK_SIZE/4];
 
 volatile struct TCB *currentThread = NULL;
 
@@ -21,12 +21,11 @@ void taskIsFinished() {
 uint32_t _temp_sp;
 extern thread IdleThread;
 uint32_t _looped = 0;
-uint32_t sp_pos;
+uint32_t *sp_pos;
 uint32_t epos;
 
-uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
+uint32_t *Thread::FillStack(threadFunction func, uint32_t *stk, uint32_t param) {
     printf("Entry point is %08X...", func);
-    uint32_t *stk = (uint32_t *)sp;
     *stk-- = 0;
     *stk-- = 0;
     *stk-- = 0;
@@ -66,15 +65,15 @@ uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
 
     printf("Stack is at %08X...", stk);
 
-    return (uint32_t)stk;
+    return stk;
 }
 
 thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) {
     
     if (ThreadList == NULL) { // This is our first ever thread
-        sp_pos = (uint32_t)(StackData + STACK_SIZE - 4);
+        sp_pos = (StackData + STACK_SIZE - 4);
         struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
-        newTCB->stack_head = (uint32_t)(StackData + STACK_SIZE - 4);
+        newTCB->stack_head = (StackData + STACK_SIZE - 4);
         newTCB->sp = newTCB->stack_head;
         newTCB->stack_size = stacksize;
 
@@ -84,7 +83,7 @@ thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) 
         newTCB->state = RUN;
         newTCB->next = NULL;
         ThreadList = newTCB;
-        sp_pos -= stacksize;
+        sp_pos -= stacksize/4;
         return newTCB;
     }
 
@@ -168,6 +167,11 @@ void Thread::Hibernate() {
 }
 
 void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
+
+    asm volatile("la $k0, currentThread");
+    asm volatile("lw $k1, 0($k0)");
+    asm volatile("beqz noThread");
+
     asm volatile("mfc0 $k1, $14");
     asm volatile("addiu $sp, $sp, -128");
     asm volatile("sw $k1, 124($sp)");
@@ -215,14 +219,11 @@ void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
     asm volatile("sw $t1, 0($sp)");
 
 
-    asm volatile("la $t0, _temp_sp");
-    asm volatile("sw $sp, 0($t0)");
+    asm volatile("la $t0, currentThread");
+    asm volatile("lw $t1, 0($t0)");
+    asm volatile("sw $sp, 0($t1)");
 
-    currentThread->sp = _temp_sp;
-    asm volatile("la $t0, epos");
-    asm volatile("lw $t1, 124($sp)");
-    asm volatile("sw $t1, 0($t0)");
-    printf("EPC: %08X\n", epos);
+noThread:
 
     _MillisecondCounter++;
 
@@ -259,7 +260,6 @@ void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
     } while(currentThread->state != Thread::RUN);
 
     currentThread->runtime++;
-    _temp_sp = currentThread->sp;
 
     asm volatile("di $t2");
     asm volatile("ehb");
@@ -271,13 +271,9 @@ void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
     asm volatile("sw $k1, %lo(IFS0CLR)($k0)");
     asm volatile("mtc0 $t2, $12");
     
-    asm volatile("la $t0, _temp_sp");
-    asm volatile("lw $sp, 0($t0)");
-        //currentThread->sp = _temp_sp;
-        //asm volatile("la $t0, epos");
-        //asm volatile("lw $t1, 124($sp)");
-        //asm volatile("sw $t1, 0($t0)");
-        //printf("New EPC: %08X\n", epos);
+    asm volatile("la $t0, currentThread");
+    asm volatile("lw $t1, 0($t0)");
+    asm volatile("lw $sp, 0($t1)");
 
     asm volatile("la $t0, _temp_sp");
     asm volatile("lw $sp, 0($t0)");
