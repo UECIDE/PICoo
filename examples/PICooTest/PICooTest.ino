@@ -33,7 +33,7 @@ void top(uint32_t x) {
 	    printf("\e[0;0H");
 	    printf("Uptime: %lums\n", Thread::Milliseconds());
 	    printf("Entry    Thread     Stack %%CPU S A\n");
-	    for (struct TCB *scan = ThreadList; scan; scan = scan->next) {
+	    for (thread scan = ThreadList; scan; scan = scan->next) {
 	        printf("%08X %-10s %-4d %4d%% %c %c\n",
 	            scan->entry,
 	            scan->name, (scan->stack_head - scan->sp) * 4, 
