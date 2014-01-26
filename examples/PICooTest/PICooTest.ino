@@ -17,7 +17,7 @@ void setup() {
 uint32_t spoon;
 
 void blinker(uint32_t x) {
-	for (i = 0; i < 10; i++) {
+	while(1) {
 		LED.write(IO::HIGH);
 		Thread::Sleep(100);
 		LED.write(IO::LOW);
