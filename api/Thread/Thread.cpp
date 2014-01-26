@@ -296,3 +296,9 @@ void Thread::Terminate() {
     currentThread->state = Thread::ZOMBIE;
     currentThread->sp = currentThread->stack_head;
 }
+
+void Thread::Wake(thread t) {
+    if (t->state == Thread::HIBER || t->state == Thread::SLEEP) {
+        t->state = Thread::RUN;
+    }
+}

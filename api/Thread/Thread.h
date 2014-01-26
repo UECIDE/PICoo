@@ -39,6 +39,7 @@ class Thread {
         static uint32_t Runtime(thread t);
         static uint32_t Milliseconds();
         static void Terminate();
+        static void Wake(thread t);
 
         static uint32_t *FillStack(threadFunction func, uint32_t *sp, uint32_t param);
 
