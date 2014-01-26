@@ -7,6 +7,8 @@
 
 typedef void (*threadFunction)();
 
+typedef struct TCB * thread;
+
 
 struct TCB {
     uint32_t sp;            // Stored stack pointer
@@ -28,7 +30,7 @@ class Thread {
         static const uint32_t HIBER = 3;
         static const uint32_t MUTEX = 4;
 
-        static uint32_t Create(void (*entry)(), uint32_t param = 0, uint32_t stacksize = 2048);
+        static thread Create(void (*entry)(), uint32_t param = 0, uint32_t stacksize = 2048);
 
         static void Sleep(uint32_t ms);
         static void Hibernate();
@@ -38,9 +40,6 @@ class Thread {
         static uint32_t Runtime(uint32_t thread);
 
         static uint32_t FillStack(threadFunction func, uint32_t sp, uint32_t param);
-
-
-    //    static void __attribute__((interrupt(),nomips16)) Scheduler();
 
 };
 

@@ -1,9 +1,6 @@
 #include <PICoo.h>
 #include <stdlib.h>
-
-//IO::PIC32 Core;
-//IO::Pin LED(Core, 13, IO::OUTPUT, IO::LOW);
-extern IO::Pin LED;
+#include <stdio.h>
 
 extern uint32_t _gp;
 
@@ -16,13 +13,19 @@ volatile struct TCB *currentThread = NULL;
 volatile uint32_t _MillisecondCounter = 0;
 
 void taskIsFinished() {
+    printf("Thread finished: %08X\n", currentThread);
     currentThread->state = Thread::ZOMBIE;
     while(1);
 }
 
 uint32_t _temp_sp;
+extern thread IdleThread;
+uint32_t _looped = 0;
+uint32_t sp_pos;
+uint32_t epos;
 
 uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
+    printf("Entry point is %08X...", func);
     uint32_t *stk = (uint32_t *)sp;
     *stk-- = 0;
     *stk-- = 0;
@@ -32,7 +35,7 @@ uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
     *stk-- = 1;
     *stk-- = (uint32_t)&taskIsFinished;
     *stk-- = 0x30303030UL;
-    *stk-- = (uint32_t)_gp;
+    *stk-- = (uint32_t)&_gp;
     *stk-- = 0x25252525UL;
     *stk-- = 0x24242424UL;
     *stk-- = 0x23232323UL;
@@ -61,14 +64,17 @@ uint32_t Thread::FillStack(threadFunction func, uint32_t sp, uint32_t param) {
     *stk-- = 0x33333333UL;
     *stk = 0x32323232UL;
 
+    printf("Stack is at %08X...", stk);
+
     return (uint32_t)stk;
 }
 
-uint32_t Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) {
+thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) {
     
     if (ThreadList == NULL) { // This is our first ever thread
+        sp_pos = (uint32_t)(StackData + STACK_SIZE - 4);
         struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
-        newTCB->stack_head = (uint32_t)&StackData[STACK_SIZE-1];
+        newTCB->stack_head = (uint32_t)(StackData + STACK_SIZE - 4);
         newTCB->sp = newTCB->stack_head;
         newTCB->stack_size = stacksize;
 
@@ -78,7 +84,8 @@ uint32_t Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize
         newTCB->state = RUN;
         newTCB->next = NULL;
         ThreadList = newTCB;
-        return (uint32_t)newTCB;
+        sp_pos -= stacksize;
+        return newTCB;
     }
 
     // It wasn't the first thread, so let's look for a suitable
@@ -118,7 +125,7 @@ uint32_t Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize
 
     if (foundThread == 0) {
         struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
-        newTCB->stack_head = (uint32_t)&StackData[STACK_SIZE-1];
+        newTCB->stack_head = sp_pos;
         newTCB->sp = newTCB->stack_head;
         newTCB->stack_size = stacksize;
 
@@ -128,13 +135,14 @@ uint32_t Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize
         newTCB->state = RUN;
         newTCB->next = NULL;
         lastThread->next = newTCB;
-        return (uint32_t)newTCB;
+        sp_pos -= stacksize;
+        return newTCB;
     } else {
         foundThread->sp = foundThread->stack_head;
         foundThread->sp = FillStack(entry, foundThread->sp, param);
         foundThread->state_data = 0;
         foundThread->state = RUN;
-        return (uint32_t)foundThread;
+        return foundThread;
     }
     return 0;
 }
@@ -211,13 +219,28 @@ void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
     asm volatile("sw $sp, 0($t0)");
 
     currentThread->sp = _temp_sp;
+    asm volatile("la $t0, epos");
+    asm volatile("lw $t1, 124($sp)");
+    asm volatile("sw $t1, 0($t0)");
+    printf("EPC: %08X\n", epos);
 
     _MillisecondCounter++;
 
     do {
         currentThread = currentThread->next;
+        if (currentThread == IdleThread) {
+            continue;
+        }
         if (currentThread == NULL) {
             currentThread = ThreadList;
+            _looped++;
+        }
+
+        // We have searched long enough for an active thread - there isn't one, so use the
+        // idle thread instead.
+        if (_looped > 2) {
+            currentThread = IdleThread;
+            break;
         }
 
         if (currentThread->state != Thread::RUN) {
@@ -235,20 +258,27 @@ void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
         }
     } while(currentThread->state != Thread::RUN);
 
-    static int j = 0;
-    static int i = 0;
-    j++;
-    if (j == 100) {
-        j = 0;
-        i = 1 - i;
-        LED.write(i);
-    }
     currentThread->runtime++;
-
-    IFS0CLR = _IFS0_CTIF_MASK;
-
     _temp_sp = currentThread->sp;
+
+    asm volatile("di $t2");
+    asm volatile("ehb");
+    asm volatile("mfc0 $k0, $13");
+    asm volatile("ins $k0, $zero, 8, 1");
+    asm volatile("mtc0 $k0, $13");
+    asm volatile("lui $k0, %hi(IFS0CLR)");
+    asm volatile("ori $k1, $zero, 2");
+    asm volatile("sw $k1, %lo(IFS0CLR)($k0)");
+    asm volatile("mtc0 $t2, $12");
     
+    asm volatile("la $t0, _temp_sp");
+    asm volatile("lw $sp, 0($t0)");
+        //currentThread->sp = _temp_sp;
+        //asm volatile("la $t0, epos");
+        //asm volatile("lw $t1, 124($sp)");
+        //asm volatile("sw $t1, 0($t0)");
+        //printf("New EPC: %08X\n", epos);
+
     asm volatile("la $t0, _temp_sp");
     asm volatile("lw $sp, 0($t0)");
 
@@ -315,6 +345,57 @@ void __attribute__((nomips16)) Thread::Start() {
     Interrupt::SetPriority(_CORE_TIMER_VECTOR, _CT_IPL_IPC, _CT_SPL_IPC);
     Interrupt::SetVector(_CORE_TIMER_VECTOR, ThreadScheduler);
     Interrupt::EnableIRQ(_CORE_TIMER_IRQ);
+
+    currentThread = IdleThread;
+    _temp_sp = currentThread->sp;
+
+    printf("Boink\n");
+    asm volatile("la $t0, _temp_sp");
+    asm volatile("lw $sp, 0($t0)");
+
+//    asm volatile("mfc0 $k0, $13");
+//    asm volatile("ins $k0, $zero, 8, 1");
+//    asm volatile("mtc0 $k0, $13");
+    
+    asm volatile("lw $t0, 0($sp)");
+    asm volatile("lw $t1, 4($sp)");
+    asm volatile("mtlo $t0");
+    asm volatile("mthi $t1");
+
+    asm volatile("lw  $1,   8($sp)");
+    asm volatile("lw  $2,  12($sp)");
+    asm volatile("lw  $3,  16($sp)");
+    asm volatile("lw  $4,  20($sp)");
+    asm volatile("lw  $5,  24($sp)");
+    asm volatile("lw  $6,  28($sp)");
+    asm volatile("lw  $7,  32($sp)");
+    asm volatile("lw  $8,  36($sp)");
+    asm volatile("lw  $9,  40($sp)");
+    asm volatile("lw $10,  44($sp)");
+    asm volatile("lw $11,  48($sp)");
+    asm volatile("lw $12,  52($sp)");
+    asm volatile("lw $13,  56($sp)");
+    asm volatile("lw $14,  60($sp)");
+    asm volatile("lw $15,  64($sp)");
+    asm volatile("lw $16,  68($sp)");
+    asm volatile("lw $17,  72($sp)");
+    asm volatile("lw $18,  76($sp)");
+    asm volatile("lw $19,  80($sp)");
+    asm volatile("lw $20,  84($sp)");
+    asm volatile("lw $21,  88($sp)");
+    asm volatile("lw $22,  92($sp)");
+    asm volatile("lw $23,  96($sp)");
+    asm volatile("lw $24, 100($sp)");
+    asm volatile("lw $25, 104($sp)");
+    asm volatile("lw $28, 108($sp)");
+    asm volatile("lw $30, 112($sp)");
+    asm volatile("lw $31, 116($sp)");
+
+    asm volatile("lw $k1, 124($sp)");
+    asm volatile("lw $k0, 120($sp)");
+    asm volatile("mtc0 $k1, $14");
+    asm volatile("addiu $sp, $sp, 128");
+    asm volatile("mtc0 $k0, $12");
 }
 
 uint32_t Thread::Uptime() {
