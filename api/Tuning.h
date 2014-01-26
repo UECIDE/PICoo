@@ -7,8 +7,8 @@
 // execute at the expense of multi tasking responsivenetss and
 // granularity of the millisecond counters.
 
-#ifndef THREAD_MS
-# define THREAD_MS 1
+#ifndef CORE_TICK_RATE
+# define CORE_TICK_RATE 40000
 #endif
 
 #ifndef STACK_SIZE

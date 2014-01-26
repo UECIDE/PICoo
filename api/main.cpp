@@ -9,29 +9,48 @@ __attribute__((section(".comment"))) void (*__use_force_isr_install)(void) = &__
 }
 
 
+extern "C" {
+    extern void ThreadScheduler();
+    extern void restoreThreadContext();
+}
+
+
 extern void setup();
 extern void loop();
 
 thread IdleThread;
 thread MasterThread;
 
-void IdleThreadFunction() {
+extern uint32_t spoon;
+
+void IdleThreadFunction(uint32_t x) {
     while (1) {
-        printf(".");
+        for (thread scan = ThreadList; scan; scan = scan->next) {
+            if (scan->state == Thread::ZOMBIE) {
+                scan->sp = scan->stack_head;
+            }
+        }
         continue;
     }
 }
 
-void MasterThreadFunction() {
-printf(">>>");
+void MasterThreadFunction(uint32_t x) {
     setup();
     while (1) {
         loop();
     }
 }
 
-void __attribute__((weak)) setup() {  }
-void __attribute__((weak)) loop() { printf("."); }
+extern thread currentThread;
+
+const char states[] = {'Z', 'R', 'S', 'H', 'M'};
+
+uint32_t counter;
+    uint32_t t;
+uint32_t spOfCurrentThread;
+
+void __attribute__((weak)) setup() { }
+void __attribute__((weak)) loop() { Thread::Terminate(); }
 
 extern "C" {
     void _mon_putc(int c) {
@@ -49,21 +68,13 @@ int main() {
     Interrupt::EnableMultiVector();
     Interrupt::InitializeVectorTable();
     JTAG::Disable();
-    U1BRG = (80000000UL / 16 / 9600) - 1;
+    U1BRG = (80000000UL / 16 / 115200) - 1;
     U1MODE = (1<<_UARTMODE_ON);
     U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN);
 
-    printf("Ready\n");
-
-    printf("Creating idle thread...");
-    IdleThread = Thread::Create(IdleThreadFunction, 0, 512);
-    printf("%08X\n", IdleThread);
-    printf("Creating master thread...");
-    MasterThread = Thread::Create(MasterThreadFunction);
-    printf("%08X\n", MasterThread);
-    printf("Starting threads...\n");
+    IdleThread = Thread::Create("idle", IdleThreadFunction, 0, 256);
+    MasterThread = Thread::Create("master", MasterThreadFunction);
     Thread::Start();
-    printf("Threads started OK\n");
 
     while(1) {
         continue;
