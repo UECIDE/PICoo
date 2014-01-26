@@ -13,19 +13,36 @@ volatile struct TCB *currentThread = NULL;
 volatile uint32_t _MillisecondCounter = 0;
 
 void taskIsFinished() {
-    printf("Thread finished: %08X\n", currentThread);
     currentThread->state = Thread::ZOMBIE;
+    currentThread->sp = currentThread->stack_head;
     while(1);
 }
 
-uint32_t _temp_sp;
+struct TCB KernelBootTCB;
+
 extern thread IdleThread;
-uint32_t _looped = 0;
+extern thread MasterThread;
 uint32_t *sp_pos;
 uint32_t epos;
+uint32_t scratch;
+
+extern "C" {
+    extern void ThreadScheduler();
+    extern void restoreThreadContext();
+}
+
+#define c0_read_count(dest)     asm volatile("mfc0 %0,$9" : "=r" (dest))
+#define c0_read_comp(dest)      asm volatile("mfc0 %0,$11" : "=r" (dest))
+#define c0_read_status(dest)    asm volatile("mfc0 %0,$12" : "=r" (dest))
+#define c0_read_cause(dest)     asm volatile("mfc0 %0,$13" : "=r" (dest))
+#define c0_read_epc(dest)       asm volatile("mfc0 %0,$14" : "=r" (dest))
+#define c0_write_count(src)     asm volatile("mtc0 %0,$9" : : "r" (src))
+#define c0_write_comp(src)      asm volatile("mtc0 %0,$11" : : "r" (src))
+#define c0_write_status(src)    asm volatile("mtc0 %0,$12" : : "r" (src))
+#define c0_write_cause(src)     asm volatile("mtc0 %0, $13" : : "r" (src))
+#define c0_write_epc(src)       asm volatile("mtc0 %0,$14" : : "r" (src))
 
 uint32_t *Thread::FillStack(threadFunction func, uint32_t *stk, uint32_t param) {
-    printf("Entry point is %08X...", func);
     *stk-- = 0;
     *stk-- = 0;
     *stk-- = 0;
@@ -63,19 +80,19 @@ uint32_t *Thread::FillStack(threadFunction func, uint32_t *stk, uint32_t param) 
     *stk-- = 0x33333333UL;
     *stk = 0x32323232UL;
 
-    printf("Stack is at %08X...", stk);
-
     return stk;
 }
 
-thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) {
+thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint32_t stacksize) {
     
     if (ThreadList == NULL) { // This is our first ever thread
-        sp_pos = (StackData + STACK_SIZE - 4);
+        sp_pos = (StackData + (STACK_SIZE/4) - 1);
         struct TCB *newTCB = (struct TCB *)malloc(sizeof(struct TCB));
-        newTCB->stack_head = (StackData + STACK_SIZE - 4);
+        newTCB->stack_head = (StackData + (STACK_SIZE/4) - 1);
         newTCB->sp = newTCB->stack_head;
         newTCB->stack_size = stacksize;
+        newTCB->entry = entry;
+        newTCB->name = n;
 
         newTCB->sp = FillStack(entry, newTCB->sp, param);
 
@@ -96,10 +113,10 @@ thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) 
     // keeps track of stack holes and reuses them for other threads
     // but for now "this will do".
 
-    struct TCB *foundThread = 0;
-    struct TCB *lastThread = 0;
-    struct TCB *smallestThread = 0;
-    for (struct TCB *scan = ThreadList; scan != NULL; scan = scan->next) {
+    thread foundThread = 0;
+    thread lastThread = 0;
+    thread smallestThread = 0;
+    for (thread scan = ThreadList; scan != NULL; scan = scan->next) {
         if (scan->state == ZOMBIE) {
             if (scan->stack_size == stacksize) {
                 foundThread = scan;
@@ -131,23 +148,27 @@ thread Thread::Create(threadFunction entry, uint32_t param, uint32_t stacksize) 
         newTCB->sp = FillStack(entry, newTCB->sp, param);
 
         newTCB->state_data = 0;
+        newTCB->entry = entry;
         newTCB->state = RUN;
         newTCB->next = NULL;
+        newTCB->name = n;
         lastThread->next = newTCB;
-        sp_pos -= stacksize;
+        sp_pos -= stacksize/4;
         return newTCB;
     } else {
         foundThread->sp = foundThread->stack_head;
         foundThread->sp = FillStack(entry, foundThread->sp, param);
         foundThread->state_data = 0;
         foundThread->state = RUN;
+        foundThread->name = n;
+        foundThread->entry = entry;
         return foundThread;
     }
     return 0;
 }
 
 void Thread::Sleep(uint32_t ms) {
-    uint32_t now = Uptime();
+    uint32_t now = Milliseconds();
     currentThread->state_data = now + ms;
     currentThread->state = SLEEP;
 
@@ -166,161 +187,76 @@ void Thread::Hibernate() {
     }
 }
 
-void __attribute__((interrupt(),nomips16)) ThreadScheduler() {
-
-    asm volatile("la $k0, currentThread");
-    asm volatile("lw $k1, 0($k0)");
-    asm volatile("beqz noThread");
-
-    asm volatile("mfc0 $k1, $14");
-    asm volatile("addiu $sp, $sp, -128");
-    asm volatile("sw $k1, 124($sp)");
-    asm volatile("mfc0 $k1, $12");
-    asm volatile("mfc0 $k0, $13");
-    
-    asm volatile("sw $k1, 120($sp)");
-
-    asm volatile("ins $k1, $zero, 1, 15");
-    asm volatile("ext $k0, $k0, 10, 6");
-    asm volatile("ins $k1, $k0, 10, 6");
-    asm volatile("mtc0 $k1, $12");
-    
-    asm volatile("sw $31, 116($sp)");
-    asm volatile("sw $30, 112($sp)");
-    asm volatile("sw $28, 108($sp)");
-    asm volatile("sw $25, 104($sp)");
-    asm volatile("sw $24, 100($sp)");
-    asm volatile("sw $23,  96($sp)");
-    asm volatile("sw $22,  92($sp)");
-    asm volatile("sw $21,  88($sp)");
-    asm volatile("sw $20,  84($sp)");
-    asm volatile("sw $19,  80($sp)");
-    asm volatile("sw $18,  76($sp)");
-    asm volatile("sw $17,  72($sp)");
-    asm volatile("sw $16,  68($sp)");
-    asm volatile("sw $15,  64($sp)");
-    asm volatile("sw $14,  60($sp)");
-    asm volatile("sw $13,  56($sp)");
-    asm volatile("sw $12,  52($sp)");
-    asm volatile("sw $11,  48($sp)");
-    asm volatile("sw $10,  44($sp)");
-    asm volatile("sw  $9,  40($sp)");
-    asm volatile("sw  $8,  36($sp)");
-    asm volatile("sw  $7,  32($sp)");
-    asm volatile("sw  $6,  28($sp)");
-    asm volatile("sw  $5,  24($sp)");
-    asm volatile("sw  $4,  20($sp)");
-    asm volatile("sw  $3,  16($sp)");
-    asm volatile("sw  $2,  12($sp)");
-    asm volatile("sw  $1,   8($sp)");
-    asm volatile("mfhi $t0");
-    asm volatile("mflo $t1");
-    asm volatile("sw $t0, 4($sp)");
-    asm volatile("sw $t1, 0($sp)");
-
-
-    asm volatile("la $t0, currentThread");
-    asm volatile("lw $t1, 0($t0)");
-    asm volatile("sw $sp, 0($t1)");
-
-noThread:
-
-    _MillisecondCounter++;
-
-    do {
-        currentThread = currentThread->next;
-        if (currentThread == IdleThread) {
-            continue;
-        }
+extern "C" {
+    extern void _mon_putc(int);
+    void selectNextThread() {
         if (currentThread == NULL) {
-            currentThread = ThreadList;
-            _looped++;
-        }
-
-        // We have searched long enough for an active thread - there isn't one, so use the
-        // idle thread instead.
-        if (_looped > 2) {
             currentThread = IdleThread;
-            break;
         }
 
-        if (currentThread->state != Thread::RUN) {
-            if (currentThread->state == Thread::SLEEP) {
-                if (_MillisecondCounter == currentThread->state_data) {
-                    currentThread->state == Thread::RUN;
+        _MillisecondCounter++;
+
+        // Activate any threads that should wake from sleep, and check any
+        // mutex locks and wake the first threads that want an available one
+
+        for (thread scan = ThreadList; scan; scan = scan->next) {
+            if (scan->state == Thread::SLEEP) {
+                if (_MillisecondCounter >= scan->state_data) {
+                    scan->state = Thread::RUN;
                 }
-            } else if (currentThread->state == Thread::MUTEX) {
-                volatile uint32_t *mutex = (uint32_t *)(currentThread->state_data);
+                continue;
+            }
+            if (scan->state == Thread::MUTEX) {
+                volatile uint32_t *mutex = (uint32_t *)(scan->state_data);
                 if (*mutex == 0) {
                     *mutex = 1;
-                    currentThread->state = Thread::RUN;
+                    scan->state = Thread::RUN;
                 }
             }
         }
-    } while(currentThread->state != Thread::RUN);
 
-    currentThread->runtime++;
+        // Now look for the next running thread in the list.
+        // If none is found that is active, then use the idle thread.
 
-    asm volatile("di $t2");
-    asm volatile("ehb");
-    asm volatile("mfc0 $k0, $13");
-    asm volatile("ins $k0, $zero, 8, 1");
-    asm volatile("mtc0 $k0, $13");
-    asm volatile("lui $k0, %hi(IFS0CLR)");
-    asm volatile("ori $k1, $zero, 2");
-    asm volatile("sw $k1, %lo(IFS0CLR)($k0)");
-    asm volatile("mtc0 $t2, $12");
-    
-    asm volatile("la $t0, currentThread");
-    asm volatile("lw $t1, 0($t0)");
-    asm volatile("lw $sp, 0($t1)");
+        thread lastThread = (thread)currentThread;
+        int loops = 0;
+        while (1) {
+            loops++;
+            if (loops > 10) {
+                currentThread = IdleThread;
+                break;
+            }
+            currentThread = currentThread->next;
 
-    asm volatile("la $t0, _temp_sp");
-    asm volatile("lw $sp, 0($t0)");
+            if (currentThread == NULL) {
+                currentThread = ThreadList;
+            }
 
-    asm volatile("mfc0 $k0, $13");
-    asm volatile("ins $k0, $zero, 8, 1");
-    asm volatile("mtc0 $k0, $13");
-    
-    asm volatile("lw $t0, 0($sp)");
-    asm volatile("lw $t1, 4($sp)");
-    asm volatile("mtlo $t0");
-    asm volatile("mthi $t1");
+            if (currentThread == IdleThread) {
+                currentThread = currentThread->next;
 
-    asm volatile("lw  $1,   8($sp)");
-    asm volatile("lw  $2,  12($sp)");
-    asm volatile("lw  $3,  16($sp)");
-    asm volatile("lw  $4,  20($sp)");
-    asm volatile("lw  $5,  24($sp)");
-    asm volatile("lw  $6,  28($sp)");
-    asm volatile("lw  $7,  32($sp)");
-    asm volatile("lw  $8,  36($sp)");
-    asm volatile("lw  $9,  40($sp)");
-    asm volatile("lw $10,  44($sp)");
-    asm volatile("lw $11,  48($sp)");
-    asm volatile("lw $12,  52($sp)");
-    asm volatile("lw $13,  56($sp)");
-    asm volatile("lw $14,  60($sp)");
-    asm volatile("lw $15,  64($sp)");
-    asm volatile("lw $16,  68($sp)");
-    asm volatile("lw $17,  72($sp)");
-    asm volatile("lw $18,  76($sp)");
-    asm volatile("lw $19,  80($sp)");
-    asm volatile("lw $20,  84($sp)");
-    asm volatile("lw $21,  88($sp)");
-    asm volatile("lw $22,  92($sp)");
-    asm volatile("lw $23,  96($sp)");
-    asm volatile("lw $24, 100($sp)");
-    asm volatile("lw $25, 104($sp)");
-    asm volatile("lw $28, 108($sp)");
-    asm volatile("lw $30, 112($sp)");
-    asm volatile("lw $31, 116($sp)");
+                if (currentThread == NULL) {
+                    currentThread = ThreadList;
+                }
+            }
 
-    asm volatile("lw $k1, 124($sp)");
-    asm volatile("lw $k0, 120($sp)");
-    asm volatile("mtc0 $k1, $14");
-    asm volatile("addiu $sp, $sp, 128");
-    asm volatile("mtc0 $k0, $12");
+            if (currentThread == lastThread) {
+                if (currentThread->state == Thread::RUN) {
+                    break;
+                } else {
+                    currentThread = IdleThread;
+                    break;
+                }
+            }
+
+            if (currentThread->state == Thread::RUN) {
+                break;
+            }
+
+        }
+
+        currentThread->runtime++;
+    }
 }
 
 // This is going to be a fun one to write.  We need to jump into the
@@ -331,7 +267,7 @@ noThread:
 // idle thread, so that is a good place to start.
 // We also need to start the core timer, and configure the interrupts.
 void __attribute__((nomips16)) Thread::Start() {
-    currentThread = ThreadList;
+    currentThread = NULL;
 
     // Set up the core timer
     uint32_t val = CORE_TICK_RATE;
@@ -342,68 +278,21 @@ void __attribute__((nomips16)) Thread::Start() {
     Interrupt::SetVector(_CORE_TIMER_VECTOR, ThreadScheduler);
     Interrupt::EnableIRQ(_CORE_TIMER_IRQ);
 
-    currentThread = IdleThread;
-    _temp_sp = currentThread->sp;
-
-    printf("Boink\n");
-    asm volatile("la $t0, _temp_sp");
-    asm volatile("lw $sp, 0($t0)");
-
-//    asm volatile("mfc0 $k0, $13");
-//    asm volatile("ins $k0, $zero, 8, 1");
-//    asm volatile("mtc0 $k0, $13");
-    
-    asm volatile("lw $t0, 0($sp)");
-    asm volatile("lw $t1, 4($sp)");
-    asm volatile("mtlo $t0");
-    asm volatile("mthi $t1");
-
-    asm volatile("lw  $1,   8($sp)");
-    asm volatile("lw  $2,  12($sp)");
-    asm volatile("lw  $3,  16($sp)");
-    asm volatile("lw  $4,  20($sp)");
-    asm volatile("lw  $5,  24($sp)");
-    asm volatile("lw  $6,  28($sp)");
-    asm volatile("lw  $7,  32($sp)");
-    asm volatile("lw  $8,  36($sp)");
-    asm volatile("lw  $9,  40($sp)");
-    asm volatile("lw $10,  44($sp)");
-    asm volatile("lw $11,  48($sp)");
-    asm volatile("lw $12,  52($sp)");
-    asm volatile("lw $13,  56($sp)");
-    asm volatile("lw $14,  60($sp)");
-    asm volatile("lw $15,  64($sp)");
-    asm volatile("lw $16,  68($sp)");
-    asm volatile("lw $17,  72($sp)");
-    asm volatile("lw $18,  76($sp)");
-    asm volatile("lw $19,  80($sp)");
-    asm volatile("lw $20,  84($sp)");
-    asm volatile("lw $21,  88($sp)");
-    asm volatile("lw $22,  92($sp)");
-    asm volatile("lw $23,  96($sp)");
-    asm volatile("lw $24, 100($sp)");
-    asm volatile("lw $25, 104($sp)");
-    asm volatile("lw $28, 108($sp)");
-    asm volatile("lw $30, 112($sp)");
-    asm volatile("lw $31, 116($sp)");
-
-    asm volatile("lw $k1, 124($sp)");
-    asm volatile("lw $k0, 120($sp)");
-    asm volatile("mtc0 $k1, $14");
-    asm volatile("addiu $sp, $sp, 128");
-    asm volatile("mtc0 $k0, $12");
-}
-
-uint32_t Thread::Uptime() {
-    return 0;
 }
 
 uint32_t Thread::Runtime() {
-    return Runtime((uint32_t)currentThread);
+    return Runtime((struct TCB *)currentThread);
 }
 
-uint32_t Thread::Runtime(uint32_t thread) {
-    struct TCB *t = (struct TCB *)thread;
+uint32_t Thread::Runtime(thread t) {
     return t->runtime;
 }
 
+uint32_t Thread::Milliseconds() {
+    return _MillisecondCounter;
+}
+
+void Thread::Terminate() {
+    currentThread->state = Thread::ZOMBIE;
+    currentThread->sp = currentThread->stack_head;
+}

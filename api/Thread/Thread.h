@@ -3,9 +3,7 @@
 
 #include <PICoo.h>
 
-#define CORE_TICK_RATE (F_CPU / 2 / (1000/THREAD_MS))
-
-typedef void (*threadFunction)();
+typedef void (*threadFunction)(uint32_t);
 
 typedef struct TCB * thread;
 
@@ -16,6 +14,8 @@ struct TCB {
     uint32_t state_data;    // Data associated with state (wake time, mutex address, etc)
     uint32_t *stack_head;    // Location in RAM of the top of the stack
     uint32_t stack_size;    // Amount of memory allocated to the stack
+    threadFunction entry;
+    const char *name;
     uint32_t runtime;
     struct TCB *next;       // Next TCB in list
 };
@@ -30,14 +30,15 @@ class Thread {
         static const uint32_t HIBER = 3;
         static const uint32_t MUTEX = 4;
 
-        static thread Create(void (*entry)(), uint32_t param = 0, uint32_t stacksize = 2048);
+        static thread Create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = 2048);
 
         static void Sleep(uint32_t ms);
         static void Hibernate();
         static void __attribute__((nomips16)) Start();
-        static uint32_t Uptime();
         static uint32_t Runtime();
-        static uint32_t Runtime(uint32_t thread);
+        static uint32_t Runtime(thread t);
+        static uint32_t Milliseconds();
+        static void Terminate();
 
         static uint32_t *FillStack(threadFunction func, uint32_t *sp, uint32_t param);
 
