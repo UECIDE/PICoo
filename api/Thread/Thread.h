@@ -6,6 +6,7 @@
 typedef void (*threadFunction)(uint32_t);
 
 typedef struct TCB * thread;
+typedef volatile uint32_t mutex;
 
 
 struct TCB {
@@ -42,6 +43,9 @@ class Thread {
         static void Wake(thread t);
 
         static uint32_t *FillStack(threadFunction func, uint32_t *sp, uint32_t param);
+
+        static void Lock(mutex *m);
+        static void Unlock(mutex *m);
 
 };
 

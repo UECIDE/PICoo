@@ -302,3 +302,16 @@ void Thread::Wake(thread t) {
         t->state = Thread::RUN;
     }
 }
+
+void Thread::Lock(mutex *m) {
+    currentThread->state_data = (uint32_t)m;
+    currentThread->state = Thread::MUTEX;
+    while (currentThread->state == Thread::MUTEX) {
+        continue;
+    }
+}
+
+void Thread::Unlock(mutex *m) {
+    *m = 0;
+    Thread::Sleep(0);
+}
