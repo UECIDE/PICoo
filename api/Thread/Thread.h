@@ -8,6 +8,8 @@ typedef void (*threadFunction)(uint32_t);
 typedef struct TCB * thread;
 typedef volatile uint32_t mutex;
 
+extern const uint32_t _core_tick;
+
 
 struct TCB {
     uint32_t *sp;            // Stored stack pointer
@@ -31,14 +33,16 @@ class Thread {
         static const uint32_t HIBER = 3;
         static const uint32_t MUTEX = 4;
 
-        static thread Create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = 2048);
+        static thread Create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = DEFAULT_STACK_BLOCK);
 
         static void Sleep(uint32_t ms);
+        static void USleep(uint32_t us);
         static void Hibernate();
         static void __attribute__((nomips16)) Start();
         static uint32_t Runtime();
         static uint32_t Runtime(thread t);
         static uint32_t Milliseconds();
+        static uint32_t Microseconds();
         static void Terminate();
         static void Wake(thread t);
 

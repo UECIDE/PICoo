@@ -11,6 +11,11 @@ uint32_t __attribute__((aligned(4))) StackData[STACK_SIZE/4];
 volatile struct TCB *currentThread = NULL;
 
 volatile uint32_t _MillisecondCounter = 0;
+volatile uint32_t _MicrosecondCounter = 0;
+volatile uint32_t _MicroMillisCounter = 0;
+
+extern const uint32_t _core_tick = (F_CPU / 2 / 1000000UL) * CORE_US;
+extern const uint32_t _core_us = CORE_US;
 
 void taskIsFinished() {
     currentThread->state = Thread::ZOMBIE;
@@ -25,6 +30,9 @@ extern thread MasterThread;
 uint32_t *sp_pos;
 uint32_t epos;
 uint32_t scratch;
+
+extern const uint32_t _core_tick;
+extern const uint32_t _core_us;
 
 extern "C" {
     extern void ThreadScheduler();
@@ -168,8 +176,12 @@ thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint3
 }
 
 void Thread::Sleep(uint32_t ms) {
-    uint32_t now = Milliseconds();
-    currentThread->state_data = now + ms;
+    USleep(ms * 1000);
+}
+
+void Thread::USleep(uint32_t us) {
+    uint32_t now = Microseconds();
+    currentThread->state_data = now + us;
     currentThread->state = SLEEP;
 
     // If we don't have this here we'll be executing some more
@@ -194,14 +206,19 @@ extern "C" {
             currentThread = IdleThread;
         }
 
-        _MillisecondCounter++;
+        _MicrosecondCounter += _core_us;
+        _MicroMillisCounter += _core_us;
+        while (_MicroMillisCounter >= 1000) {
+            _MillisecondCounter++;
+            _MicroMillisCounter -= 1000;
+        }
 
         // Activate any threads that should wake from sleep, and check any
         // mutex locks and wake the first threads that want an available one
 
         for (thread scan = ThreadList; scan; scan = scan->next) {
             if (scan->state == Thread::SLEEP) {
-                if (_MillisecondCounter >= scan->state_data) {
+                if (_MicrosecondCounter >= scan->state_data) {
                     scan->state = Thread::RUN;
                 }
                 continue;
@@ -255,7 +272,7 @@ extern "C" {
 
         }
 
-        currentThread->runtime++;
+        currentThread->runtime += _core_us;
     }
 }
 
@@ -270,9 +287,9 @@ void __attribute__((nomips16)) Thread::Start() {
     currentThread = NULL;
 
     // Set up the core timer
-    uint32_t val = CORE_TICK_RATE;
+    uint32_t val = _core_tick;
     asm volatile("mtc0  $0,$9"); // Clear core timer counter
-    asm volatile("mtc0  %0,$11" : "+r"(val)); // Set up the tick
+    asm volatile("mtc0  %0,$11" :: "r"(_core_tick)); // Set up the tick
 
     Interrupt::SetPriority(_CORE_TIMER_VECTOR, _CT_IPL_IPC, _CT_SPL_IPC);
     Interrupt::SetVector(_CORE_TIMER_VECTOR, ThreadScheduler);
@@ -285,11 +302,15 @@ uint32_t Thread::Runtime() {
 }
 
 uint32_t Thread::Runtime(thread t) {
-    return t->runtime;
+    return t->runtime / 1000;
 }
 
 uint32_t Thread::Milliseconds() {
     return _MillisecondCounter;
+}
+
+uint32_t Thread::Microseconds() {
+    return _MicrosecondCounter;
 }
 
 void Thread::Terminate() {
@@ -313,5 +334,5 @@ void Thread::Lock(mutex *m) {
 
 void Thread::Unlock(mutex *m) {
     *m = 0;
-    Thread::Sleep(0);
+    Thread::USleep(0);
 }

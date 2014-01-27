@@ -72,6 +72,7 @@ int main() {
     U1MODE = (1<<_UARTMODE_ON);
     U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN);
 
+
     IdleThread = Thread::Create("idle", IdleThreadFunction, 0, 256);
     MasterThread = Thread::Create("master", MasterThreadFunction);
     Thread::Start();

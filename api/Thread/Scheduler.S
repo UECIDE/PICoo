@@ -9,7 +9,6 @@
 //    .extern currentTask, 4
 
     .equ context_size, 128
-    .equ tick_speed, CORE_TICK_RATE
 
     .set noreorder
     .set noat
@@ -19,6 +18,12 @@
     .ent ThreadScheduler
     
 ThreadScheduler:
+    // Clear the counter and reset the compare
+    mtc0    zero, $9
+    la      k0, _core_tick
+    lw      k1, 0(k0)
+    mtc0    k1, $11
+
     rdpgpr  sp, sp
 
     // If currentThread is null then don't do any storing of registers.
@@ -130,12 +135,6 @@ noThread:
     la      k0, intStatus
     lw      t2, 0(k0)
     mtc0    t2, $12
-
-    // Clear the counter and reset the compare
-    mtc0    zero, $9
-    lui     k1, %hi(tick_speed)
-    addiu   k1, k1, %lo(tick_speed)
-    mtc0    k1, $11
 
 
     // Restore all the data for this thread
