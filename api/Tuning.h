@@ -9,7 +9,7 @@
 // The value is represented in microseconds.
 
 #ifndef CORE_US
-# define CORE_US 10
+# define CORE_US 100
 #endif
 
 // This is the overall amount of memory to reserve for thread stacks.

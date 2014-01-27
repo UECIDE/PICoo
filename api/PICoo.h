@@ -31,6 +31,7 @@
 #ifndef _PICOO_H
 #define _PICOO_H
 
+#include <stdio.h>
 #include <stdint.h>
 
 #include <p32xxxx.h>

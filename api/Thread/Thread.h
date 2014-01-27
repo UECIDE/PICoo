@@ -7,14 +7,15 @@ typedef void (*threadFunction)(uint32_t);
 
 typedef struct TCB * thread;
 typedef volatile uint32_t mutex;
+typedef volatile uint32_t semaphore;
 
 extern const uint32_t _core_tick;
-
 
 struct TCB {
     uint32_t *sp;            // Stored stack pointer
     uint32_t state;         // Current thread state
     uint32_t state_data;    // Data associated with state (wake time, mutex address, etc)
+    uint32_t state_data_extra;
     uint32_t *stack_head;    // Location in RAM of the top of the stack
     uint32_t stack_size;    // Amount of memory allocated to the stack
     threadFunction entry;
@@ -32,6 +33,7 @@ class Thread {
         static const uint32_t SLEEP = 2;
         static const uint32_t HIBER = 3;
         static const uint32_t MUTEX = 4;
+        static const uint32_t SEMWAIT = 5;
 
         static thread Create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = DEFAULT_STACK_BLOCK);
 
@@ -48,8 +50,11 @@ class Thread {
 
         static uint32_t *FillStack(threadFunction func, uint32_t *sp, uint32_t param);
 
-        static void Lock(mutex *m);
-        static void Unlock(mutex *m);
+        static void Lock(mutex& m);
+        static void Unlock(mutex& m);
+
+        static void Signal(semaphore& s);
+        static void Wait(semaphore& s);
 
 };
 

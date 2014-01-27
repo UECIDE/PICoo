@@ -181,7 +181,8 @@ void Thread::Sleep(uint32_t ms) {
 
 void Thread::USleep(uint32_t us) {
     uint32_t now = Microseconds();
-    currentThread->state_data = now + us;
+    currentThread->state_data = now;
+    currentThread->state_data_extra = us;
     currentThread->state = SLEEP;
 
     // If we don't have this here we'll be executing some more
@@ -217,8 +218,20 @@ extern "C" {
         // mutex locks and wake the first threads that want an available one
 
         for (thread scan = ThreadList; scan; scan = scan->next) {
+            if (scan->state == Thread::SEMWAIT) {
+                volatile uint32_t *sem = (uint32_t *)(scan->state_data);
+                if (*sem == 1) {
+                    for (thread scan2 = scan; scan2; scan2 = scan2->next) {
+                        if ((scan2->state == Thread::SEMWAIT) && (scan2->state_data == scan->state_data)) {
+                            scan2->state = Thread::RUN;
+                        }
+                    }
+                    *sem = 0;
+                }
+                continue;
+            }
             if (scan->state == Thread::SLEEP) {
-                if (_MicrosecondCounter >= scan->state_data) {
+                if (_MicrosecondCounter - scan->state_data >= scan->state_data_extra) {
                     scan->state = Thread::RUN;
                 }
                 continue;
@@ -324,15 +337,29 @@ void Thread::Wake(thread t) {
     }
 }
 
-void Thread::Lock(mutex *m) {
-    currentThread->state_data = (uint32_t)m;
+void Thread::Lock(mutex& m) {
+    currentThread->state_data = (uint32_t)&m;
     currentThread->state = Thread::MUTEX;
     while (currentThread->state == Thread::MUTEX) {
         continue;
     }
 }
 
-void Thread::Unlock(mutex *m) {
-    *m = 0;
+void Thread::Unlock(mutex& m) {
+    m = 0;
     Thread::USleep(0);
 }
+
+void Thread::Signal(semaphore& s) {
+    s = 1;
+    Thread::USleep(0);
+}
+
+void Thread::Wait(semaphore& s) {
+    currentThread->state_data = (uint32_t)&s;
+    currentThread->state = Thread::SEMWAIT;
+    while(currentThread->state == Thread::SEMWAIT) {
+        continue;
+    }
+}
+
