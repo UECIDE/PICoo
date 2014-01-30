@@ -32,6 +32,12 @@
 
 namespace IO {
 
+    Pin::Pin() {
+        _dev = NULL;
+        _pin = 0;
+        _mode = 0;
+    }
+
     Pin::Pin(Parallel &dev, uint16_t pin, uint8_t mode, uint8_t data) : _dev(&dev), _pin(pin), _mode(mode) {
         _dev->setMode(_pin, _mode, data);
     }

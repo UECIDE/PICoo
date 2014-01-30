@@ -9,14 +9,14 @@
 // The value is represented in microseconds.
 
 #ifndef CORE_US
-# define CORE_US 100
+# define CORE_US 500
 #endif
 
 // This is the overall amount of memory to reserve for thread stacks.
 // More = more threads supported, but less space for other data.
 
 #ifndef STACK_SIZE
-# define STACK_SIZE 8192
+# define STACK_SIZE 32768
 #endif
 
 // How much memory (from the reserved stack memory above) to allocate

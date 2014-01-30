@@ -28,33 +28,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _IO_FAST_CORE_PIN_H
+#define _IO_FAST_CORE_PIN_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
+struct FastCorePinData {
+    uint32_t base;
+    uint32_t bit;
+};
+
+namespace IO {
+    class FastCorePin : public Pin {
+        public:
+            FastCorePin(uint16_t pin, uint8_t mode = IO::INPUT, uint8_t data = IO::OFF);
+            uint8_t read();
+            void write(uint8_t level);
+            void setMode(uint8_t mode, uint8_t data = IO::OFF);
+
+        private:
+            struct FastCorePinData _control;
+            uint16_t _pin;
+            uint8_t _mode;
+    };
 }
-#endif
-
-#include <Tuning.h>
-
-#include <Utility/Utility.h>
-
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
-
-#include <IO/IO.h>
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _UART1_H
+#define _UART1_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
+#ifdef _UART_1_VECTOR
+
+class UART1 : public Serial {
+        
+    public:
+        static CircularBuffer *txBuffer;
+        static CircularBuffer *rxBuffer;
+
+        UART1();
+        void begin(uint32_t);
+        //static void __attribute__((interrupt(),nomips16)) rxtxISR();
+        static void rxtxISR();
+
+        void write(uint8_t);
+        int read();
+        int available();
+        void flush();
+};
+
 #endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
-}
-#endif
-
-#include <Tuning.h>
-
-#include <Utility/Utility.h>
-
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
-
-#include <IO/IO.h>
 
 #endif

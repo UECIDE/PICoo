@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _MATH_H
+#define _MATH_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+namespace Math {
+    extern uint32_t MulU(uint32_t a, uint32_t b);
+    extern uint32_t DivU(uint32_t a, uint32_t b);
+    extern uint32_t ModU(uint32_t a, uint32_t b);
+    extern int32_t MulS(int32_t a, int32_t b);
+    extern int32_t DivS(int32_t a, int32_t b);
+    extern int32_t ModS(int32_t a, int32_t b);
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
+    extern void FFT(int16_t *fr, int16_t *fi, int16_t m);
 }
-#endif
-
-#include <Tuning.h>
-
-#include <Utility/Utility.h>
-
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
-
-#include <IO/IO.h>
 
 #endif

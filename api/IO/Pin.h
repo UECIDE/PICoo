@@ -40,6 +40,7 @@
 namespace IO {
     class Pin {
         public:
+            Pin();
             Pin(Parallel &dev, uint16_t pin, uint8_t mode = IO::INPUT, uint8_t data = IO::OFF);
             uint8_t read();
             void write(uint8_t level);

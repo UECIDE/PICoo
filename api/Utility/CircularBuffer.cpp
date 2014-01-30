@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,53 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#include <PICoo.h>
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
-
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
+CircularBuffer::CircularBuffer(uint32_t size) {
+    _size = size;
+    _data = (uint8_t *)malloc(size);
+    _head = 0;
+    _tail = 0;
 }
-#endif
 
-#include <Tuning.h>
+int CircularBuffer::read() {
+    int16_t chr;
+    if (_head == _tail) {
+        return -1;
+    }
+    chr = _data[_tail];
+    _tail = Math::ModU(_tail + 1, _size);
+    return chr;
+}
 
-#include <Utility/Utility.h>
+void CircularBuffer::write(uint8_t d) {
+    uint32_t newhead = Math::ModU(_head + 1, _size);
+    if (newhead != _tail) {
+        _data[_head] = d;
+        _head = newhead;
+    }
+}
 
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
+int CircularBuffer::available() {
+    return Math::ModU(_size + _head - _tail, _size);
+}
 
-#include <IO/IO.h>
+void CircularBuffer::clear() {
+    _head = _tail = 0;
+}
 
-#endif
+uint8_t CircularBuffer::getEntry(uint32_t p) {
+    if (p >= _size) {
+        return 0;
+    }
+    return _data[p];
+}
+
+uint32_t CircularBuffer::getHead() {
+    return _head;
+}
+
+uint32_t CircularBuffer::getTail() {
+    return _tail;
+}
+

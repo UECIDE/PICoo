@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,50 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _PRINT_H
+#define _PRINT_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
-}
-#endif
+class Print
+{
+    private:
+        void printNumber(uint32_t, uint8_t);
+        void printFloat(double, uint8_t);
 
-#include <Tuning.h>
+    public:
+    
+        static const uint8_t DEC = 10;
+        static const uint8_t HEX = 16;
+        static const uint8_t OCT = 8;
+        static const uint8_t OCTAL = 8;
+        static const uint8_t BIN = 2;
+        static const uint8_t BINARY = 2;
+        static const uint8_t CHAR = 0;
 
-#include <Utility/Utility.h>
+        virtual void write(uint8_t) = 0;
+        virtual void write(const char *str);
+        virtual void write(const uint8_t *buffer, size_t size);
 
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
+        //void print(const String &);
+        void print(const char[]);
+        void print(char, int = Print::CHAR);
+        void print(uint8_t, int = Print::CHAR);
+        void print(int, int = Print::DEC);
+        void print(uint32_t, int = Print::DEC);
+        void print(int32_t, int = Print::DEC);
+        void print(double, int = 2);
 
-#include <IO/IO.h>
+        void printf(const char *fmt, ...);
+
+        //void println(const String &s);
+        void println(const char[]);
+        void println(char, int = Print::CHAR);
+        void println(uint8_t, int = Print::CHAR);
+        void println(uint32_t, int = Print::DEC);
+        void println(int32_t, int = Print::DEC);
+        void println(double, int = 2);
+        void println(void);
+};
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,20 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _SERIAL_H
+#define _SERIAL_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
-}
-#endif
+// This is the Serial base class.  All asynchronous serial communication devices of all kinds
+// inherit from this class.
 
-#include <Tuning.h>
-
-#include <Utility/Utility.h>
-
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
-
-#include <IO/IO.h>
+class Serial : public Print {
+    public:
+        virtual int read() = 0;
+        virtual void write(uint8_t) = 0;
+        virtual int available() = 0;
+        virtual void flush() = 0;
+};
 
 #endif

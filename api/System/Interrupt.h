@@ -76,12 +76,19 @@ namespace Interrupt {
     extern uint32_t __attribute__((nomips16)) Enable();
     extern uint32_t __attribute__((nomips16)) Disable();
     extern void __attribute__((nomips16)) EnableMultiVector();
+    extern void __attribute__((nomips16)) EnableSingleVector();
     extern void InitializeVectorTable();
     extern void SetPriority(uint32_t, uint32_t, uint32_t);
     extern isrFunc SetVector(uint32_t, isrFunc);
     extern isrFunc GetVector(uint32_t);
     extern uint32_t EnableIRQ(uint32_t);
     extern uint32_t DisableIRQ(uint32_t);
+    extern void ClearFlag(uint32_t);
+    extern uint32_t GetFlag(uint32_t);
+    extern uint8_t isEnabled(uint32_t);
+    extern void ExecuteInterrupt(uint32_t i);
+    extern void AttachInterrupt(uint32_t i, isrFunc f);
+    extern void DetatchInterrupt(uint32_t i);
 }
 
 #endif

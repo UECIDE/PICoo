@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Majenko Technologies
+ * Copyright (c) 2014, Majenko Technologies
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification,
@@ -28,33 +28,27 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PICOO_H
-#define _PICOO_H
+#ifndef _CIRCULAR_BUFFER_H
+#define _CIRCULAR_BUFFER_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include <PICoo.h>
 
-#include <p32xxxx.h>
-#include <p32_defs.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include <compat/pins_arduino.h>
-#ifdef __cplusplus
-}
-#endif
+class CircularBuffer {
+    private:
+        uint8_t *_data;
+        int _head;
+        int _tail;
+        int _size;
 
-#include <Tuning.h>
-
-#include <Utility/Utility.h>
-
-#include <System/Interrupt.h>
-#include <System/System.h>
-#include <System/JTAG.h>
-#include <Thread/Thread.h>
-
-#include <IO/IO.h>
+    public:
+        CircularBuffer(uint32_t);
+        int read();
+        void write(uint8_t);
+        int available();
+        void clear();
+        uint8_t getEntry(uint32_t p);
+        uint32_t getHead();
+        uint32_t getTail();
+};
 
 #endif

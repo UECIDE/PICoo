@@ -65,16 +65,15 @@ extern "C" {
 
 int main() {
     System::Configure(F_CPU);
-    Interrupt::EnableMultiVector();
+    Interrupt::EnableSingleVector();
     Interrupt::InitializeVectorTable();
     JTAG::Disable();
-    U1BRG = (80000000UL / 16 / 115200) - 1;
-    U1MODE = (1<<_UARTMODE_ON);
-    U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN);
+//    U1BRG = (80000000UL / 16 / 115200) - 1;
+//    U1MODE = (1<<_UARTMODE_ON);
+//    U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN);
 
-
-    IdleThread = Thread::Create("idle", IdleThreadFunction, 0, 256);
-    MasterThread = Thread::Create("master", MasterThreadFunction);
+    IdleThread = Thread::Create("[idle]", IdleThreadFunction, 0, 32);
+    MasterThread = Thread::Create("[arduino_api]", MasterThreadFunction);
     Thread::Start();
 
     while(1) {
