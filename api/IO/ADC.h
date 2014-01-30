@@ -28,12 +28,34 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _ADC_H
+#define _ADC_H
+
 #include <PICoo.h>
 
-void Serial::cls() {
-    this->print("\e[2J");
-}
+/* Base ADC class.
+ *
+ * Theory of operation:
+ * All ADC modules, regardless of their native bit resolution, will return
+ * all samples and sample sets in 32-bit signed format.  Any ADC that is
+ * smaller than 32-bit resolution, which will be pretty much all of them,
+ * will shift their values to the left far enough to make use of the
+ * full 32-bit range.
+ */
 
-void Serial::setCursor(int x, int y) {
-    this->printf("\e[%d;%dH", y, x);
-}
+class ADC {
+    public:
+        static const int32_t MAX = 2147483647L;
+        static const int32_t MIN = -2147483648L;
+        enum {
+            IDLE,
+            SAMPLING
+        };
+
+        virtual int32_t read(uint16_t) = 0;
+        virtual void startSample(uint16_t channel, int32_t *data, uint32_t samples, uint32_t frequency) = 0;
+        virtual uint8_t getState(uint16_t channel) = 0;
+        virtual void stopSample(uint16_t channel) = 0;
+};
+
+#endif

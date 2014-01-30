@@ -42,6 +42,8 @@ class Serial : public Print {
         virtual void write(uint8_t) = 0;
         virtual int available() = 0;
         virtual void flush() = 0;
+        void cls();
+        void setCursor(int, int);
 };
 
 #endif
