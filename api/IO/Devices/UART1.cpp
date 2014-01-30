@@ -46,14 +46,9 @@ UART1::UART1() {
     }
 }
 
-extern "C" {
-    extern void ThreadScheduler();
-}
-
 void UART1::begin(uint32_t baud) {
 
     Interrupt::AttachInterrupt(_UART1_RX_IRQ, &UART1::rxtxISR);
-    Interrupt::SetVector(_UART_1_VECTOR, ThreadScheduler);
     Interrupt::SetPriority(_UART_1_VECTOR, 5, 0);
     Interrupt::EnableIRQ(_UART1_RX_IRQ);
 //    Interrupt::EnableIRQ(_UART1_TX_IRQ);

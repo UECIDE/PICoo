@@ -9,11 +9,11 @@
     .set noreorder
     .set noat
 
-    .global ThreadScheduler
+    .global ISRWrapper
 
-    .ent ThreadScheduler
+    .ent ISRWrapper
 
-ThreadScheduler:
+ISRWrapper:
     // Clear the counter and reset the compare
     di      zero
 
@@ -240,5 +240,5 @@ restoreThreadContext:
 
     eret
 
-    .end ThreadScheduler
+    .end ISRWrapper
 

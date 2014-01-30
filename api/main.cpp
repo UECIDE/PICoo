@@ -52,25 +52,13 @@ uint32_t spOfCurrentThread;
 void __attribute__((weak)) setup() { }
 void __attribute__((weak)) loop() { Thread::Terminate(); }
 
-extern "C" {
-    void _mon_putc(int c) {
-        while ((U1STA & (1 << _UARTSTA_UTXBF)) != 0) {
-            continue;
-        }
-        U1TXREG = c;
-    }
-}
-
 #include <stdio.h>
 
 int main() {
     System::Configure(F_CPU);
-    Interrupt::EnableSingleVector();
     Interrupt::InitializeVectorTable();
+    Interrupt::EnableSingleVector();
     JTAG::Disable();
-//    U1BRG = (80000000UL / 16 / 115200) - 1;
-//    U1MODE = (1<<_UARTMODE_ON);
-//    U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN);
 
     IdleThread = Thread::Create("[idle]", IdleThreadFunction, 0, 32);
     MasterThread = Thread::Create("[arduino_api]", MasterThreadFunction);

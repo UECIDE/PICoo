@@ -18,8 +18,6 @@ extern const uint32_t _core_tick = (F_CPU / 2 / 1000000UL) * CORE_US;
 extern const uint32_t _core_us = CORE_US;
 extern const uint32_t _ticks_per_us = F_CPU / 2 / 1000000UL;
 
-thread ISRThread;
-
 void taskIsFinished() {
     currentThread->state = Thread::ZOMBIE;
     currentThread->sp = currentThread->stack_head;
@@ -51,12 +49,6 @@ extern "C" {
 #define c0_write_status(src)    asm volatile("mtc0 %0,$12" : : "r" (src))
 #define c0_write_cause(src)     asm volatile("mtc0 %0, $13" : : "r" (src))
 #define c0_write_epc(src)       asm volatile("mtc0 %0,$14" : : "r" (src))
-
-void isrThreadStub(uint32_t x) {
-    while(1) {
-        Thread::Hibernate();
-    }
-}
 
 void Thread::FillContext(threadFunction func, thread t, uint32_t param) {
     t->context.epc = (uint32_t)func;
@@ -215,22 +207,6 @@ void Thread::Hibernate() {
     }
 }
 
-extern "C" {
-    void processInterrupt() {
-        TRISCCLR = 1<<1;
-        LATCSET = 1<<1;
-        for (uint32_t irq = 0; irq < NUM_INT_REQUEST; irq++) {
-            if (Interrupt::GetFlag(irq)) {
-                Interrupt::ExecuteInterrupt(irq);
-                Interrupt::ClearFlag(irq);
-                LATCCLR = 1<<1;
-                return;
-            }
-        }
-        LATCCLR = 1<<1;
-    }
-}
-
 void Thread::SelectNextThread() {
     if (currentThread == NULL) {
         currentThread = IdleThread;
@@ -338,10 +314,7 @@ void __attribute__((nomips16)) Thread::Start() {
     asm volatile("mtc0  $0,$9"); // Clear core timer counter
     asm volatile("mtc0  %0,$11" :: "r"(_core_tick)); // Set up the tick
 
-    ISRThread = Thread::Create("[kernel_isr]", isrThreadStub);
-
     Interrupt::SetPriority(_CORE_TIMER_VECTOR, 6, 6); //_CT_IPL_IPC, _CT_SPL_IPC);
-    Interrupt::SetVector(0, ThreadScheduler);
     Interrupt::AttachInterrupt(_CORE_TIMER_IRQ, &Thread::SelectNextThread);
     Interrupt::EnableIRQ(_CORE_TIMER_IRQ);
 

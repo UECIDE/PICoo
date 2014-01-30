@@ -50,10 +50,10 @@ extern "C" {
 
 #include <Utility/Utility.h>
 
+#include <Thread/Thread.h>
 #include <System/Interrupt.h>
 #include <System/System.h>
 #include <System/JTAG.h>
-#include <Thread/Thread.h>
 
 #include <IO/IO.h>
 
