@@ -35,8 +35,6 @@
 CircularBuffer *UART1::txBuffer = NULL;
 CircularBuffer *UART1::rxBuffer = NULL;
 
-volatile uint32_t isr_count = 0;
-
 UART1::UART1() {
 //    if (UART1::txBuffer == NULL) {
 //        UART1::txBuffer = new CircularBuffer(64);
@@ -66,8 +64,6 @@ void UART1::begin(uint32_t baud) {
 
 //void __attribute__((interrupt(),nomips16)) UART1::rxtxISR() {
 void UART1::rxtxISR() {
-    isr_count++;
-//    IFS0CLR = 1<<27;
 //    if (Interrupt::GetFlag(_UART1_RX_IRQ)) {
 //        while ((U1STA & 1) != 0) {
             uint8_t ch = U1RXREG;

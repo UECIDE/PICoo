@@ -34,6 +34,10 @@
 #include <PICoo.h>
 #include <System/System_Defs.h>
 
+namespace IO {
+    class Pin;
+}
+
 typedef void (* FNIMGJMP) (void);
 typedef void (*isrFunc)(void);
 
@@ -95,6 +99,10 @@ class Interrupt {
         static void ExecuteInterrupt(uint32_t i);
         static void AttachInterrupt(uint32_t i, isrFunc f);
         static void DetatchInterrupt(uint32_t i);
+
+        static void SetIndicatorPin(IO::Pin& p);
+        static void IndicateOn();
+        static void IndicateOff();
 
 };
 

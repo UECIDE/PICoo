@@ -3,6 +3,9 @@
 isrFunc _isr_table[NUM_INT_REQUEST];
 thread ISRThread;
 
+IO::Pin *_indicator;
+
+
 extern "C" {
     extern void ISRWrapper();
 }
@@ -64,6 +67,7 @@ void __attribute__((nomips16)) Interrupt::EnableSingleVector() {
 
     ISRThread = Thread::Create("[kernel_isr]", isrThreadStub);
     SetVector(0, ISRWrapper);
+    _indicator = NULL;
 }
 
 
@@ -174,17 +178,32 @@ void Interrupt::DetatchInterrupt(uint32_t i) {
 
 extern "C" {
     void processInterrupt() {
-        TRISCCLR = 1<<1;
-        LATCSET = 1<<1;
+        Interrupt::IndicateOn();
         for (uint32_t irq = 0; irq < NUM_INT_REQUEST; irq++) {
             if (Interrupt::GetFlag(irq)) {
                 Interrupt::ExecuteInterrupt(irq);
                 Interrupt::ClearFlag(irq);
-                LATCCLR = 1<<1;
-                return;
+                break;
             }
         }
-        LATCCLR = 1<<1;
+        Interrupt::IndicateOff();
     }
 }
+
+void Interrupt::SetIndicatorPin(IO::Pin& p) {
+    _indicator = &p;
+}
+
+void Interrupt::IndicateOn() {
+    if (_indicator != NULL) {
+        _indicator->write(IO::HIGH);
+    }
+}
+
+void Interrupt::IndicateOff() {
+    if (_indicator != NULL) {
+        _indicator->write(IO::LOW);
+    }
+}
+
 
