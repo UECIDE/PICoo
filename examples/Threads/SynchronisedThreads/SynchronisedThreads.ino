@@ -1,5 +1,5 @@
 // We have 2 LEDs on most chipKIT boards - let's make use of them.
-IO::PIC32 Core;
+IO::CoreIO Core;
 IO::Pin LED1(Core, PIN_LED1, IO::OUTPUT, IO::LOW);
 IO::Pin LED2(Core, PIN_LED2, IO::OUTPUT, IO::LOW);
 

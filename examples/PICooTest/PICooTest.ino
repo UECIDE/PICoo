@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-IO::PIC32 Core;
+IO::CoreIO Core;
 IO::Pin LED(Core, 13, IO::OUTPUT, IO::LOW);
 
 const char states[] = {'Z', 'R', 'S', 'H', 'M'};

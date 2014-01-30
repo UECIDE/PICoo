@@ -28,8 +28,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _IO_PIC32_H
-#define _IO_PIC32_H
+#ifndef _IO_COREIO_H
+#define _IO_COREIO_H
 
 /*
  * PIC32 Core digital IO device
@@ -39,7 +39,7 @@
 
 
 namespace IO {
-    class PIC32 : public Parallel {
+    class CoreIO : public Parallel {
         public:
             void write(uint16_t pin, uint8_t level);
             uint8_t read(uint16_t pin);

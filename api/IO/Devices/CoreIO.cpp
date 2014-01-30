@@ -38,7 +38,7 @@
 
 namespace IO {
 
-    void PIC32::setMode(uint16_t pin, uint8_t mode, uint8_t data) {
+    void CoreIO::setMode(uint16_t pin, uint8_t mode, uint8_t data) {
 
         uint32_t                bit;
         uint8_t                 port;
@@ -176,7 +176,7 @@ namespace IO {
 
     }
 
-    void PIC32::write(uint16_t pin, uint8_t level) {
+    void CoreIO::write(uint16_t pin, uint8_t level) {
         uint32_t                bit;
         uint8_t                 port;
         volatile p32_ioport *   iop;
@@ -198,7 +198,7 @@ namespace IO {
         }
     }
 
-    uint8_t PIC32::read(uint16_t pin) {
+    uint8_t CoreIO::read(uint16_t pin) {
         return IO::LOW;
     }
 }

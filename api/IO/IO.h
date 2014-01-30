@@ -4,7 +4,7 @@
 #include <IO/ADC.h>
 
 // Parallel IO devices
-#include <IO/Devices/PIC32.h>
+#include <IO/Devices/CoreIO.h>
 #include <IO/FastCorePin.h>
 
 // Async Serial IO devices
