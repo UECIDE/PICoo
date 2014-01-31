@@ -31,12 +31,16 @@
 #ifndef _CORE_ADC_H
 #define _CORE_ADC_H
 
+namespace IO {
+
 class CoreADC : public ADC {
     public:
-        int32_t read(uint16_t channel);
-        void startSample(uint16_t, int32_t *, uint32_t, uint32_t);
+        int16_t read(uint16_t channel);
+        void startSample(uint16_t, int16_t *, uint32_t, uint32_t);
         uint8_t getState(uint16_t);
         void stopSample(uint16_t);
 };
 
+
+}
 #endif

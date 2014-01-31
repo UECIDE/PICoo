@@ -1,6 +1,8 @@
 #include <PICoo.h>
 
-int32_t CoreADC::read(uint16_t pin) {
+namespace IO {
+
+int16_t CoreADC::read(uint16_t pin) {
     int analogValue;
     uint8_t channelNumber;
     uint8_t ain;
@@ -43,7 +45,7 @@ int32_t CoreADC::read(uint16_t pin) {
 #endif      // defined(__PIC32MX1XX__) || defined(__PIC32MX2XX__)
     AD1CHS = (channelNumber & 0xFFFF) << 16;
     AD1CON1 =   0; //Ends sampling, and starts converting
-    AD1CON1SET = 0b110 << 8; // 32-bit fractional
+    AD1CON1SET = 0b011 << 8; // 16-bit signed fractional value
 
     /* Set up for manual sampling */
     AD1CSSL =   0;
@@ -65,14 +67,13 @@ int32_t CoreADC::read(uint16_t pin) {
     /* Wait for conversion to finish */
     while (!(AD1CON1 & 0x0001));
 
-    analogValue =   ADC1BUF0 >> 1;
-    analogValue |= (analogValue & 0x00200000) ? 0x001FFFFF : 0;
+    analogValue =   ADC1BUF0;
 
     return (analogValue);
 }
 
 
-void CoreADC::startSample(uint16_t, int32_t *, uint32_t, uint32_t) {
+void CoreADC::startSample(uint16_t, int16_t *, uint32_t, uint32_t) {
 }
 
 uint8_t CoreADC::getState(uint16_t) {
@@ -82,3 +83,5 @@ uint8_t CoreADC::getState(uint16_t) {
 void CoreADC::stopSample(uint16_t) {
 }
 
+
+}
