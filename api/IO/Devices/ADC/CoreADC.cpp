@@ -59,7 +59,7 @@ int16_t CoreADC::read(uint16_t pin) {
     AD1CON1SET  =   0x0002;
 
     /* Delay for a bit */
-    Thread::USleep(2);
+    Thread::uSleep(2);
 
     /* Start conversion */
     AD1CON1CLR  =   0x0002;

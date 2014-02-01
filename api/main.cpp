@@ -50,19 +50,19 @@ uint32_t counter;
 uint32_t spOfCurrentThread;
 
 void __attribute__((weak)) setup() { }
-void __attribute__((weak)) loop() { Thread::Terminate(); }
+void __attribute__((weak)) loop() { Thread::terminate(); }
 
 #include <stdio.h>
 
 int main() {
-    System::Configure(F_CPU);
-    Interrupt::InitializeVectorTable();
-    Interrupt::EnableSingleVector();
-    JTAG::Disable();
+    System::configure(F_CPU);
+    Interrupt::initializeVectorTable();
+    Interrupt::enableMultiVector();
+    JTAG::disable();
 
-    IdleThread = Thread::Create("[idle]", IdleThreadFunction, 0, 32);
-    MasterThread = Thread::Create("[arduino_api]", MasterThreadFunction);
-    Thread::Start();
+    IdleThread = Thread::create("[idle]", IdleThreadFunction, 0, 32);
+    MasterThread = Thread::create("[arduino_api]", MasterThreadFunction);
+    Thread::start();
 
     while(1) {
         continue;

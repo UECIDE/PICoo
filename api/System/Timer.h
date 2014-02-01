@@ -28,66 +28,36 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _TIMER_H
+#define _TIMER_H
+
 #include <PICoo.h>
 
-#ifdef _UART_1_VECTOR
+class Timer {
+    private:
+        static uint8_t _alloc;
+        static const uint8_t _priorityList[5];
+        uint32_t _timerNumber;
+        
+    public:
+        static const uint8_t TIMER1 = 0x01;
+        static const uint8_t TIMER2 = 0x02;
+        static const uint8_t TIMER3 = 0x04;
+        static const uint8_t TIMER4 = 0x08;
+        static const uint8_t TIMER5 = 0x10;
 
-CircularBuffer *UART1::txBuffer = NULL;
-CircularBuffer *UART1::rxBuffer = NULL;
-
-UART1::UART1() {
-//    if (UART1::txBuffer == NULL) {
-//        UART1::txBuffer = new CircularBuffer(64);
-//    }
-    if (UART1::rxBuffer == NULL) {
-        UART1::rxBuffer = new CircularBuffer(64);
-    }
-}
-
-void UART1::begin(uint32_t baud) {
-
-    Interrupt::attachInterrupt(_UART1_RX_IRQ, &UART1::rxtxISR);
-    Interrupt::setPriority(_UART_1_VECTOR, 3, 0);
-    Interrupt::enableIRQ(_UART1_RX_IRQ);
-//    Interrupt::enableIRQ(_UART1_TX_IRQ);
-
-    if (baud > 9600) {
-        U1BRG = (F_CPU / 4 / baud) - 1;
-        U1MODE = (1<<_UARTMODE_ON) | (1<<_UARTMODE_BRGH);
-        U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN) | (0b10 << 14);
-    } else {
-        U1BRG = (F_CPU / 16 / baud) - 1;
-        U1MODE = (1<<_UARTMODE_ON);
-        U1STA = (1 << _UARTSTA_UTXEN) | (1 << _UARTSTA_URXEN) | (0b10 << 14);
-    }
-}
-
-void UART1::rxtxISR() {
-    uint8_t ch = U1RXREG;
-    UART1::rxBuffer->write(ch);
-}
-
-void UART1::flush() {
-    while(UART1::txBuffer->available()) {
-        Thread::uSleep(1);
-        continue;
-    }
-    UART1::rxBuffer->clear();
-}
-
-void UART1::write(uint8_t d) {
-    while((U1STA & (1 << _UARTSTA_UTXBF)) != 0) {
-        Thread::uSleep(1);
-    }
-    U1TXREG = d;
-} 
-
-int UART1::read() {
-    return UART1::rxBuffer->read();
-}
-
-int UART1::available() {
-    return UART1::rxBuffer->available();
-}
+        Timer(uint8_t allowed = 0xFF);
+        uint32_t getIRQ();
+        uint32_t getNumber();
+        void attachInterrupt(isrFunc f);
+        void detatchInterrupt();
+        void setPeriod(uint32_t);
+        void setFrequency(uint32_t);
+        void start();
+        void stop();
+        void release();
+        uint8_t acquire();
+        
+};
 
 #endif

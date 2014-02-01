@@ -129,8 +129,8 @@ void Print::printNumber(unsigned long n, uint8_t base)
 	}
 
 	while (n > 0) {
-		buf[i++] = Math::ModU(n, base);
-		n = Math::DivU(n, base);
+		buf[i++] = Math::modU(n, base);
+		n = Math::divU(n, base);
 	}
 
 	for (; i > 0; i--) {

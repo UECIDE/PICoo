@@ -1,16 +1,14 @@
 #include <PICoo.h>
 
 namespace System {
-
-
-    void __attribute__((nomips16)) Configure(uint32_t clk) {
+    void __attribute__((nomips16)) configure(uint32_t clk) {
         uint32_t stInt;
 #ifdef _PCACHE
         uint32_t stCache;
         uint32_t wait;
         register uint32_t tmp;
 #endif
-        stInt = Interrupt::Disable();
+        stInt = Interrupt::disable();
 
         BMXCONCLR = (1 << _BMXCON_BMXWSDRM_POSITION);
 
@@ -31,6 +29,6 @@ namespace System {
         stCache |= (wait << _CHECON_PFMWS_POSITION);
         CHECON = stCache;
 #endif
-        Interrupt::Restore(stInt);
+        Interrupt::restore(stInt);
     }
 }

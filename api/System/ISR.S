@@ -15,7 +15,7 @@
 
 ISRWrapper:
     // Clear the counter and reset the compare
-    di      zero
+    //di      zero
 
     // If currentThread is null then don't do any storing of registers.
     la      k0, currentThread
@@ -124,7 +124,8 @@ gotThread:
     lw      v0, 116(k0)
     lw      $1, 120(k0)
 
-    jal      processInterrupt
+    jal     selectNextThread
+//    jal      processInterrupt
     nop;
 
     // Store the ISR context
@@ -236,7 +237,7 @@ restoreThreadContext:
     lw      k1, 0(k0)
     mtc0    k1, $11
 
-    ei      zero
+    //ei      zero
 
     eret
 

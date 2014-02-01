@@ -54,6 +54,7 @@ extern "C" {
 #include <System/Interrupt.h>
 #include <System/System.h>
 #include <System/JTAG.h>
+#include <System/Timer.h>
 
 #include <IO/IO.h>
 

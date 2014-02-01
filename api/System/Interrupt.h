@@ -81,28 +81,29 @@ extern thread ISRThread;
 
 class Interrupt {
     public:
-        static void __attribute__((nomips16)) Restore(uint32_t);
-        static uint32_t __attribute__((nomips16)) Enable();
-        static uint32_t __attribute__((nomips16)) Disable();
-        static void __attribute__((nomips16)) EnableMultiVector();
-        static void __attribute__((nomips16)) EnableSingleVector();
-        static void InitializeVectorTable();
-        static void SetPriority(uint32_t, uint32_t, uint32_t);
-        static isrFunc SetVector(uint32_t, isrFunc);
-        static isrFunc ClearVector(uint32_t);
-        static isrFunc GetVector(uint32_t);
-        static uint32_t EnableIRQ(uint32_t);
-        static uint32_t DisableIRQ(uint32_t);
-        static void ClearFlag(uint32_t);
-        static uint32_t GetFlag(uint32_t);
+        static void __attribute__((nomips16)) restore(uint32_t);
+        static uint32_t __attribute__((nomips16)) enable();
+        static uint32_t __attribute__((nomips16)) disable();
+        static void __attribute__((nomips16)) enableMultiVector();
+        static void __attribute__((nomips16)) enableSingleVector();
+        static void initializeVectorTable();
+        static void setPriority(uint32_t, uint32_t, uint32_t);
+        static isrFunc setVector(uint32_t, isrFunc);
+        static isrFunc clearVector(uint32_t);
+        static isrFunc getVector(uint32_t);
+        static uint32_t enableIRQ(uint32_t);
+        static uint32_t disableIRQ(uint32_t);
+        static void clearFlag(uint32_t);
+        static uint32_t getFlag(uint32_t);
         static uint8_t isEnabled(uint32_t);
-        static void ExecuteInterrupt(uint32_t i);
-        static void AttachInterrupt(uint32_t i, isrFunc f);
-        static void DetatchInterrupt(uint32_t i);
+        static void executeInterrupt(uint32_t i);
+        static void attachInterrupt(uint32_t i, isrFunc f);
+        static void detatchInterrupt(uint32_t i);
 
-        static void SetIndicatorPin(IO::Pin& p);
-        static void IndicateOn();
-        static void IndicateOff();
+        static void setIndicatorPin(IO::Pin& p);
+        static void indicateOn();
+        static void indicateOff();
+        static uint32_t getVectorByIRQ(uint32_t irq);
 
 };
 

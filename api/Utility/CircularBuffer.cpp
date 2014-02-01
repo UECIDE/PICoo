@@ -43,12 +43,12 @@ int CircularBuffer::read() {
         return -1;
     }
     chr = _data[_tail];
-    _tail = Math::ModU(_tail + 1, _size);
+    _tail = Math::modU(_tail + 1, _size);
     return chr;
 }
 
 void CircularBuffer::write(uint8_t d) {
-    uint32_t newhead = Math::ModU(_head + 1, _size);
+    uint32_t newhead = Math::modU(_head + 1, _size);
     if (newhead != _tail) {
         _data[_head] = d;
         _head = newhead;
@@ -56,7 +56,7 @@ void CircularBuffer::write(uint8_t d) {
 }
 
 int CircularBuffer::available() {
-    return Math::ModU(_size + _head - _tail, _size);
+    return Math::modU(_size + _head - _tail, _size);
 }
 
 void CircularBuffer::clear() {

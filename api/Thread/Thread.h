@@ -75,28 +75,28 @@ class Thread {
         static const uint32_t MUTEX = 4;
         static const uint32_t SEMWAIT = 5;
 
-        static thread Create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = DEFAULT_STACK_BLOCK);
+        static thread create(const char *, threadFunction entry, uint32_t param = 0, uint32_t stacksize = DEFAULT_STACK_BLOCK);
 
-        static void Sleep(uint32_t ms);
-        static void USleep(uint32_t us);
-        static void Hibernate();
-        static void __attribute__((nomips16)) Start();
-        static uint32_t Runtime();
-        static uint32_t Runtime(thread t);
-        static uint32_t Milliseconds();
-        static uint32_t Microseconds();
-        static void Terminate();
-        static void Wake(thread t);
+        static void sleep(uint32_t ms);
+        static void uSleep(uint32_t us);
+        static void hibernate();
+        static void __attribute__((nomips16)) start();
+        static uint32_t runtime();
+        static uint32_t runtime(thread t);
+        static uint32_t milliseconds();
+        static uint32_t microseconds();
+        static void terminate();
+        static void wake(thread t);
 
-        static void FillContext(threadFunction func, thread t, uint32_t param);
+        static void fillContext(threadFunction func, thread t, uint32_t param);
 
-        static void Lock(mutex& m);
-        static void Unlock(mutex& m);
+        static void lock(mutex& m);
+        static void unlock(mutex& m);
 
-        static void Signal(semaphore& s);
-        static void Wait(semaphore& s);
+        static void signal(semaphore& s);
+        static void wait(semaphore& s);
 
-        static void SelectNextThread();
+        static void __attribute__((interrupt)) selectNextThread();
 
 };
 

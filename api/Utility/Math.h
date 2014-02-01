@@ -32,12 +32,12 @@
 #define _MATH_H
 
 namespace Math {
-    extern uint32_t MulU(uint32_t a, uint32_t b);
-    extern uint32_t DivU(uint32_t a, uint32_t b);
-    extern uint32_t ModU(uint32_t a, uint32_t b);
-    extern int32_t MulS(int32_t a, int32_t b);
-    extern int32_t DivS(int32_t a, int32_t b);
-    extern int32_t ModS(int32_t a, int32_t b);
+    extern uint32_t mulU(uint32_t a, uint32_t b);
+    extern uint32_t divU(uint32_t a, uint32_t b);
+    extern uint32_t modU(uint32_t a, uint32_t b);
+    extern int32_t mulS(int32_t a, int32_t b);
+    extern int32_t divS(int32_t a, int32_t b);
+    extern int32_t modS(int32_t a, int32_t b);
 
     extern void FFT(int16_t *fr, int16_t *fi, int16_t m);
 }

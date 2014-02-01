@@ -2,8 +2,8 @@
 #define _JTAG_H
 
 namespace JTAG {
-    extern void Enable();
-    extern void Disable();
+    extern void enable();
+    extern void disable();
 }
 
 #endif

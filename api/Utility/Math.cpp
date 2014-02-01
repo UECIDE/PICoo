@@ -103,28 +103,28 @@ namespace Math {
        -32727, -32736, -32744, -32751, -32757, -32761, -32764, -32766,
     };
 
-    uint32_t MulU(uint32_t a, uint32_t b) {
+    uint32_t mulU(uint32_t a, uint32_t b) {
         uint32_t res;
         asm volatile("multu $a0, $a1");
         asm volatile("mflo %0" :: "r"(res));
         return res;
     }
 
-    uint32_t DivU(uint32_t a, uint32_t b) {
+    uint32_t divU(uint32_t a, uint32_t b) {
         uint32_t res;   
         asm volatile("divu $a0, $a1");
         asm volatile("mflo %0" :: "r"(res));
         return res;
     }
 
-    uint32_t ModU(uint32_t a, uint32_t b) {
+    uint32_t modU(uint32_t a, uint32_t b) {
         uint32_t res;   
         asm volatile("divu $a0, $a1");
         asm volatile("mfhi %0" :: "r"(res));
         return res;
     }
 
-    int32_t MulS(int32_t a, int32_t b) {
+    int32_t mulS(int32_t a, int32_t b) {
         int64_t res;
         int32_t rh;
         int32_t rl;
@@ -135,14 +135,14 @@ namespace Math {
         return (int32_t)res;
     }
 
-    int32_t DivS(int32_t a, int32_t b) {
+    int32_t divS(int32_t a, int32_t b) {
         int32_t res;
         asm volatile("div $a0, $a1");
         asm volatile("mflo %0" :: "r"(res));
         return res;
     }
 
-    int32_t ModS(int32_t a, int32_t b) {
+    int32_t modS(int32_t a, int32_t b) {
         int32_t res;
         asm volatile("div $a0, $a1");
         asm volatile("mfhi %0" :: "r"(res));
@@ -192,22 +192,22 @@ namespace Math {
                 for (i=m; i<n; i+=istep) {
                     j = i + l;
 
-                    c = Math::MulS(wr, fr[j]);
+                    c = Math::mulS(wr, fr[j]);
                     c = c >> 14;
                     b = c & 0x01;
                     tr = (c >> 1) + b;
 
-                    c = Math::MulS(wi, fi[j]);
+                    c = Math::mulS(wi, fi[j]);
                     c = c >> 14;
                     b = c & 0x01;
                     tr = tr - ((c >> 1) + b);
 
-                    c = Math::MulS(wr, fi[j]);
+                    c = Math::mulS(wr, fi[j]);
                     c = c >> 14;
                     b = c & 0x01;
                     ti = (c >> 1) + b;
 
-                    c = Math::MulS(wi, fr[j]);
+                    c = Math::mulS(wi, fr[j]);
                     c = c >> 14;
                     b = c & 0x01;
                     ti = ti + ((c >> 1) + b);

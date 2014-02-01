@@ -26,6 +26,8 @@ void taskIsFinished() {
 
 struct TCB KernelBootTCB;
 
+thread kernelThread;
+
 extern thread IdleThread;
 extern thread MasterThread;
 uint32_t *sp_pos;
@@ -50,7 +52,7 @@ extern "C" {
 #define c0_write_cause(src)     asm volatile("mtc0 %0, $13" : : "r" (src))
 #define c0_write_epc(src)       asm volatile("mtc0 %0,$14" : : "r" (src))
 
-void Thread::FillContext(threadFunction func, thread t, uint32_t param) {
+void Thread::fillContext(threadFunction func, thread t, uint32_t param) {
     t->context.epc = (uint32_t)func;
     t->context.status = 1;
     t->context.ra = (uint32_t)&taskIsFinished;
@@ -85,7 +87,7 @@ void Thread::FillContext(threadFunction func, thread t, uint32_t param) {
     t->context.lo = 0x32323232UL;
 }
 
-thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint32_t stacksize) {
+thread Thread::create(const char *n, threadFunction entry, uint32_t param, uint32_t stacksize) {
     
     if (ThreadList == NULL) { // This is our first ever thread
         sp_pos = (StackData + (STACK_SIZE/4) - 1);
@@ -100,7 +102,7 @@ thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint3
         newTCB->entry = entry;
         newTCB->name = n;
 
-        FillContext(entry, newTCB, param);
+        fillContext(entry, newTCB, param);
 
         newTCB->state_data = 0;
         newTCB->state = RUN;
@@ -156,7 +158,7 @@ thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint3
         *newTCB->sp-- = 0;
         *newTCB->sp-- = 0;
 
-        FillContext(entry, newTCB, param);
+        fillContext(entry, newTCB, param);
 
         newTCB->state_data = 0;
         newTCB->entry = entry;
@@ -172,7 +174,7 @@ thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint3
         *foundThread->sp-- = 0;
         *foundThread->sp-- = 0;
         *foundThread->sp-- = 0;
-        FillContext(entry, foundThread, param);
+        fillContext(entry, foundThread, param);
         foundThread->state_data = 0;
         foundThread->state = RUN;
         foundThread->name = n;
@@ -182,12 +184,12 @@ thread Thread::Create(const char *n, threadFunction entry, uint32_t param, uint3
     return 0;
 }
 
-void Thread::Sleep(uint32_t ms) {
-    USleep(Math::MulU(ms, 1000));
+void Thread::sleep(uint32_t ms) {
+    uSleep(Math::mulU(ms, 1000));
 }
 
-void Thread::USleep(uint32_t us) {
-    uint32_t now = Microseconds();
+void Thread::uSleep(uint32_t us) {
+    uint32_t now = microseconds();
     currentThread->state_data = now;
     currentThread->state_data_extra = us;
     currentThread->state = SLEEP;
@@ -200,14 +202,17 @@ void Thread::USleep(uint32_t us) {
     }
 }
 
-void Thread::Hibernate() {
+void Thread::hibernate() {
     currentThread->state = HIBER;
     while (currentThread->state == HIBER) {
         continue;
     }
 }
 
-void Thread::SelectNextThread() {
+extern "C" {
+void selectNextThread() {
+
+    Interrupt::indicateOn();
     if (currentThread == NULL) {
         currentThread = IdleThread;
     }
@@ -219,17 +224,17 @@ void Thread::SelectNextThread() {
     _MillisecondCounter = 0;
 
     for (thread scan = ThreadList; scan; scan = scan->next) {
-        scan->runtime_us += Math::DivU(scan->runtime, _ticks_per_us);
-        scan->runtime = Math::ModU(scan->runtime, _ticks_per_us);
+        scan->runtime_us += Math::divU(scan->runtime, _ticks_per_us);
+        scan->runtime = Math::modU(scan->runtime, _ticks_per_us);
 
-        scan->runtime_ms += Math::DivU(scan->runtime_us, 1000);
-        scan->runtime_us = Math::ModU(scan->runtime_us, 1000);
+        scan->runtime_ms += Math::divU(scan->runtime_us, 1000);
+        scan->runtime_us = Math::modU(scan->runtime_us, 1000);
 
         _MicrosecondCounter += scan->runtime_us;
         _MillisecondCounter += scan->runtime_ms;
     }
-    _MillisecondCounter += Math::DivU(_MicrosecondCounter, 1000);
-    _MicrosecondCounter = Math::ModU(_MicrosecondCounter, 1000);
+    _MillisecondCounter += Math::divU(_MicrosecondCounter, 1000);
+    _MicrosecondCounter = Math::modU(_MicrosecondCounter, 1000);
         
     for (thread scan = ThreadList; scan; scan = scan->next) {
         if (scan->state == Thread::SEMWAIT) {
@@ -245,7 +250,7 @@ void Thread::SelectNextThread() {
             continue;
         }
         if (scan->state == Thread::SLEEP) {
-            if ((_MicrosecondCounter + Math::MulU(_MillisecondCounter, 1000)) - scan->state_data >= scan->state_data_extra) {
+            if ((_MicrosecondCounter + Math::mulU(_MillisecondCounter, 1000)) - scan->state_data >= scan->state_data_extra) {
                 scan->state = Thread::RUN;
             }
             continue;
@@ -297,6 +302,9 @@ void Thread::SelectNextThread() {
             break;
         }
     }
+    IFS0bits.CTIF = 0;
+    Interrupt::indicateOff();
+}
 }
 
 // This is going to be a fun one to write.  We need to jump into the
@@ -306,7 +314,7 @@ void Thread::SelectNextThread() {
 // The first thread in the list should theoretically always be the
 // idle thread, so that is a good place to start.
 // We also need to start the core timer, and configure the interrupts.
-void __attribute__((nomips16)) Thread::Start() {
+void __attribute__((nomips16)) Thread::start() {
     currentThread = NULL;
 
     // Set up the core timer
@@ -314,40 +322,41 @@ void __attribute__((nomips16)) Thread::Start() {
     asm volatile("mtc0  $0,$9"); // Clear core timer counter
     asm volatile("mtc0  %0,$11" :: "r"(_core_tick)); // Set up the tick
 
-    Interrupt::SetPriority(_CORE_TIMER_VECTOR, 6, 6); //_CT_IPL_IPC, _CT_SPL_IPC);
-    Interrupt::AttachInterrupt(_CORE_TIMER_IRQ, &Thread::SelectNextThread);
-    Interrupt::EnableIRQ(_CORE_TIMER_IRQ);
+    Interrupt::setPriority(_CORE_TIMER_VECTOR, 1, 0); //_CT_IPL_IPC, _CT_SPL_IPC);
+///    Interrupt::setVector(_CORE_TIMER_VECTOR, &Thread::selectNextThread);
+//    Interrupt::attachInterrupt(_CORE_TIMER_IRQ, &Thread::selectNextThread);
+    Interrupt::enableIRQ(_CORE_TIMER_IRQ);
 
 }
 
-uint32_t Thread::Runtime() {
-    return Runtime((struct TCB *)currentThread);
+uint32_t Thread::runtime() {
+    return runtime((struct TCB *)currentThread);
 }
 
-uint32_t Thread::Runtime(thread t) {
+uint32_t Thread::runtime(thread t) {
     return t->runtime_ms;
 }
 
-uint32_t Thread::Milliseconds() {
+uint32_t Thread::milliseconds() {
     return _MillisecondCounter;
 }
 
-uint32_t Thread::Microseconds() {
+uint32_t Thread::microseconds() {
     return _MicrosecondCounter + (_MillisecondCounter * 1000);
 }
 
-void Thread::Terminate() {
+void Thread::terminate() {
     currentThread->state = Thread::ZOMBIE;
     currentThread->sp = currentThread->stack_head;
 }
 
-void Thread::Wake(thread t) {
+void Thread::wake(thread t) {
     if (t->state == Thread::HIBER || t->state == Thread::SLEEP) {
         t->state = Thread::RUN;
     }
 }
 
-void Thread::Lock(mutex& m) {
+void Thread::lock(mutex& m) {
     currentThread->state_data = (uint32_t)&m;
     currentThread->state = Thread::MUTEX;
     while (currentThread->state == Thread::MUTEX) {
@@ -355,17 +364,17 @@ void Thread::Lock(mutex& m) {
     }
 }
 
-void Thread::Unlock(mutex& m) {
+void Thread::unlock(mutex& m) {
     m = 0;
-    Thread::USleep(0);
+    Thread::uSleep(0);
 }
 
-void Thread::Signal(semaphore& s) {
+void Thread::signal(semaphore& s) {
     s = 1;
-    Thread::USleep(0);
+    Thread::uSleep(0);
 }
 
-void Thread::Wait(semaphore& s) {
+void Thread::wait(semaphore& s) {
     currentThread->state_data = (uint32_t)&s;
     currentThread->state = Thread::SEMWAIT;
     while(currentThread->state == Thread::SEMWAIT) {

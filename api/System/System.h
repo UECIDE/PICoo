@@ -48,7 +48,7 @@
 #endif  // defined(__PIC32MX1XX__) || defined(__PIC32MX2XX__)
 
 namespace System {
-    extern void __attribute__((nomips16)) Configure(uint32_t);
+    extern void __attribute__((nomips16)) configure(uint32_t);
 }
 
 #endif
