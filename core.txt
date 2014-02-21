@@ -1,6 +1,8 @@
 name=PICoo
 description=Object Oriented core for PIC32
 compiler=pic32-gcc
+version=%VERSION%
+revision=%REVISION%
 
 core.flags=-DF_CPU=${build.f_cpu}::-DARDUINO=${core.version}::-D${board}::-DMPIDEVER=${core.revision}::-DMPIDE=23
 
