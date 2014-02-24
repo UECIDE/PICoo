@@ -21,15 +21,15 @@ extern thread currentThread;  // Currently active thread
 void setup() {
 	// Let's make one of the LEDs flicker as interrupts occur.  That means a glow
 	// for the high speed interrupts of the context switcher.
-	Interrupt::SetIndicatorPin(LED2);
+	Interrupt::setIndicatorPin(LED2);
 
 	// Set up our serial and clear the screen
 	Serial.begin(115200);
 	Serial.print("\e[2J");
 
 	// Create our two threads.  We only need a small stack for each instead of the default.
-	blnk = Thread::Create("blink",blinker, 0, 128);
-	topscreen = Thread::Create("top",top, 0, 512);
+	blnk = Thread::create("blink",blinker, 0, 128);
+	topscreen = Thread::create("top",top, 0, 512);
 }
 
 // This is our blinker routine.  Flash an LED over a 500ms period in total.
@@ -37,11 +37,11 @@ void setup() {
 void blinker(uint32_t x) {
 	while(1) {
 		// Indicate to the other thread through our semaphore that we are blinking the LED
-		Thread::Signal(sem);
+		Thread::signal(sem);
 		LED1.write(IO::HIGH);
-		Thread::Sleep(100);
+		Thread::sleep(100);
 		LED1.write(IO::LOW);
-		Thread::Sleep(400);
+		Thread::sleep(400);
 	}
 }
 
@@ -52,25 +52,25 @@ void top(uint32_t x) {
 		uint32_t su = 0;
 		uint32_t sa = 0;
 		// Stop here until we get the signal.
-		Thread::Wait(sem);
+		Thread::wait(sem);
 		if (Serial.available()) {
 			lastCharacter = Serial.read();
 		}
 	    Serial.print("\e[0;0H");
 			    
 	    Serial.print("Uptime: ");
-	    Serial.println(Thread::Milliseconds());
+	    Serial.println(Thread::milliseconds());
 	    Serial.println("Entry    Thread         Stack CPU% S A");
 	    for (thread scan = ThreadList; scan; scan = scan->next) {
 	        Serial.printf("%08X %-14s %-4d %4u%% %c %c\n",
 	            scan->entry,
-	            scan->name, Math::MulU(scan->stack_head - scan->sp, 4), 
-	            Math::DivU(Math::MulU(Thread::Runtime(scan), 100), Thread::Milliseconds()),
+	            scan->name, (scan->stack_head - scan->sp) * 4, 
+	            (Thread::runtime(scan) * 100) / Thread::milliseconds(),
 	            states[scan->state],
 	            scan == currentThread? '*' : ' '
 	        );
 	        sa += scan->stack_size;
-	        su += Math::MulU(scan->stack_head - scan->sp, 4);
+	        su += (scan->stack_head - scan->sp) * 4;
 	    }
 	    Serial.printf("Total stack size: %u, Allocated: %u, Used: %u\n", STACK_SIZE, sa, su);
 	    Serial.println();
@@ -79,7 +79,7 @@ void top(uint32_t x) {
 	    Serial.println("Serial RX Circular Buffer Contents:");
 	    for (uint8_t x = 0; x < 64; x++) {
 	    	Serial.printf("%02X ", Serial.rxBuffer->getEntry(x));
-	    	if (Math::ModU(x, 16) == 15) {
+	    	if ((x % 16) == 15) {
 	    		Serial.println();
 	    	}
 	    }

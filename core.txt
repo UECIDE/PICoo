@@ -6,12 +6,17 @@ revision=%REVISION%
 
 core.flags=-DF_CPU=${build.f_cpu}::-DARDUINO=${core.version}::-D${board}::-DMPIDEVER=${core.revision}::-DMPIDE=23
 
-core.path=api
+core.library.api=api
+core.library.Thread=api/Thread
+core.library.Utility=api/Utility
+core.library.IO=api/IO::api/IO/Devices/ADC::api/IO/Devices/Parallel::api/IO/Devices/Async
+core.library.System=api/System
+
 core.header=PICoo.h
 core.version=1
 core.revision=1
 
-core.ldflags=-T::${find:${ldscript}}::-T::${core.root}/${core.path}/chipKIT-application-COMMON.ld
+core.ldflags=-T::${find:${board.root}::${core.root}/api,${ldscript}}::-T::${core.root}/api/chipKIT-application-COMMON.ld
 
 library.path=libraries
 examples.path=examples
