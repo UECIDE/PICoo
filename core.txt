@@ -1,6 +1,6 @@
 name=PICoo
 description=Object Oriented core for PIC32
-compiler=pic32-gcc
+compiler=pic32-tools
 version=%VERSION%
 revision=%REVISION%
 
